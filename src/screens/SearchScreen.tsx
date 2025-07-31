@@ -19,7 +19,11 @@ import { SERVICE_CATEGORIES, SERVICES, SERVICE_PROVIDERS, SERVICE_DISTANCES } fr
 import { COLORS } from '../constants/colors';
 import { Service } from '../types';
 
-const SearchScreen: React.FC = () => {
+interface SearchScreenProps {
+  navigation?: any;
+}
+
+const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -66,7 +70,14 @@ const SearchScreen: React.FC = () => {
   const handleServicePress = (serviceId: string) => {
     const serviceData = filteredServices.find(item => item.service.id === serviceId);
     if (serviceData) {
-      setSelectedProvider(serviceData.provider);
+      if (navigation) {
+        navigation.navigate('Réservation', {
+          service: serviceData.service,
+          provider: serviceData.provider
+        });
+      } else {
+        setSelectedProvider(serviceData.provider);
+      }
     }
   };
 
@@ -88,7 +99,12 @@ const SearchScreen: React.FC = () => {
 
   const handleServicePressFromProvider = (service: Service) => {
     console.log('Service selected from provider:', service.name);
-    // Ici vous pouvez naviguer vers la page de réservation
+    if (navigation) {
+      navigation.navigate('Réservation', {
+        service: service,
+        provider: selectedProvider
+      });
+    }
   };
 
   const toggleMapView = () => {

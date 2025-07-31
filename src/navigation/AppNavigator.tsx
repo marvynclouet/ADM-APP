@@ -129,6 +129,11 @@ const MessagesScreenWrapper: React.FC<any> = ({ navigation }) => {
   return <MessagesScreen navigation={navigation} />;
 };
 
+// Wrapper pour SearchScreen avec navigation
+const SearchScreenWrapper: React.FC<any> = ({ navigation }) => {
+  return <SearchScreen navigation={navigation} />;
+};
+
 // Stack pour les messages
 const MessagesStack = () => {
   return (
@@ -143,7 +148,7 @@ const MessagesStack = () => {
 const SearchStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SearchMain" component={SearchScreen} />
+      <Stack.Screen name="SearchMain" component={SearchScreenWrapper} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Réservation" component={BookingScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
