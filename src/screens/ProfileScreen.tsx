@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface ProfileScreenProps {
   navigation?: any;
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+  const { toast, showSuccess, showInfo, showWarning, hideToast } = useToast();
   const user = {
     name: 'Marie Dupont',
     email: 'marie.dupont@email.com',
@@ -42,84 +45,95 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     );
   };
 
+  const handleMenuPress = (action: string) => {
+    switch (action) {
+      case 'edit':
+        showInfo('Modification du profil à venir');
+        break;
+      case 'notifications':
+        showInfo('Paramètres de notifications à venir');
+        break;
+      case 'security':
+        showInfo('Paramètres de sécurité à venir');
+        break;
+      case 'payment':
+        showInfo('Méthodes de paiement à venir');
+        break;
+      case 'help':
+        showInfo('Centre d\'aide à venir');
+        break;
+      case 'about':
+        showInfo('À propos de l\'application à venir');
+        break;
+      case 'logout':
+        showWarning('Déconnexion en cours...');
+        setTimeout(() => {
+          if (navigation) {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Auth' }],
+            });
+          }
+        }, 1000);
+        break;
+      default:
+        showInfo('Fonctionnalité à venir');
+    }
+  };
+
   const menuItems = [
     {
+      id: 'edit',
+      title: 'Modifier le profil',
       icon: 'person-outline',
-      title: 'Informations personnelles',
-      subtitle: 'Modifier vos données',
-      onPress: () => {
-        Alert.alert(
-          'Informations personnelles',
-          'Fonctionnalité à venir : Modification du profil utilisateur',
-          [{ text: 'OK' }]
-        );
-      },
+      action: () => handleMenuPress('edit')
     },
     {
-      icon: 'notifications-outline',
+      id: 'notifications',
       title: 'Notifications',
-      subtitle: 'Gérer vos préférences',
-      onPress: () => {
-        Alert.alert(
-          'Notifications',
-          'Fonctionnalité à venir : Gestion des notifications',
-          [{ text: 'OK' }]
-        );
-      },
+      icon: 'notifications-outline',
+      action: () => handleMenuPress('notifications')
     },
     {
+      id: 'security',
+      title: 'Sécurité',
+      icon: 'shield-outline',
+      action: () => handleMenuPress('security')
+    },
+    {
+      id: 'payment',
+      title: 'Méthodes de paiement',
       icon: 'card-outline',
-      title: 'Moyens de paiement',
-      subtitle: 'Cartes et portefeuilles',
-      onPress: () => {
-        Alert.alert(
-          'Moyens de paiement',
-          'Fonctionnalité à venir : Gestion des moyens de paiement',
-          [{ text: 'OK' }]
-        );
-      },
+      action: () => handleMenuPress('payment')
     },
     {
-      icon: 'location-outline',
-      title: 'Adresses',
-      subtitle: 'Adresses de livraison',
-      onPress: () => {
-        Alert.alert(
-          'Adresses',
-          'Fonctionnalité à venir : Gestion des adresses',
-          [{ text: 'OK' }]
-        );
-      },
-    },
-    {
-      icon: 'shield-checkmark-outline',
-      title: 'Confidentialité',
-      subtitle: 'Sécurité et données',
-      onPress: () => {
-        Alert.alert(
-          'Confidentialité',
-          'Fonctionnalité à venir : Paramètres de confidentialité',
-          [{ text: 'OK' }]
-        );
-      },
-    },
-    {
+      id: 'help',
+      title: 'Aide',
       icon: 'help-circle-outline',
-      title: 'Aide et support',
-      subtitle: 'FAQ et contact',
-      onPress: () => {
-        Alert.alert(
-          'Aide et support',
-          'Fonctionnalité à venir : Centre d\'aide et support',
-          [{ text: 'OK' }]
-        );
-      },
+      action: () => handleMenuPress('help')
     },
+    {
+      id: 'about',
+      title: 'À propos',
+      icon: 'information-circle-outline',
+      action: () => handleMenuPress('about')
+    }
   ];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+      
+      {/* Header avec gradient */}
+      <LinearGradient
+        colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+        style={styles.header}
+      >
         <Text style={styles.headerTitle}>Mon Profil</Text>
       </LinearGradient>
 
@@ -156,7 +170,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <TouchableOpacity
             key={index}
             style={styles.menuItem}
-            onPress={item.onPress}
+            onPress={item.action}
             activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
@@ -173,12 +187,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         ))}
       </View>
 
-      <View style={styles.logoutSection}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Bouton de déconnexion */}
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={() => handleMenuPress('logout')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="log-out" size={20} color={COLORS.error} />
+        <Text style={styles.logoutText}>Se déconnecter</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };

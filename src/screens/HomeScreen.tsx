@@ -17,6 +17,8 @@ import ServiceCarousel from '../components/ServiceCarousel';
 import Logo from '../components/Logo';
 import { SERVICE_CATEGORIES, SERVICE_PROVIDERS, SERVICES } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface HomeScreenProps {
   onNavigateToSearch?: () => void;
@@ -36,6 +38,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToBookings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const { toast, showSuccess, showInfo, hideToast } = useToast();
 
   // Données utilisateur avec image d'API
   const user = {
@@ -104,20 +107,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   const handlePromotionPress = () => {
-    // Trouver les services de manucure
-    const manucureServices = SERVICES.filter(service => 
-      service.category.name.toLowerCase().includes('manucure')
-    );
-    
-    if (manucureServices.length > 0) {
-      if (onNavigateToService) {
-        onNavigateToService(manucureServices[0].id);
-      } else {
-        Alert.alert('Promotion', 'Navigation vers les services de manucure en promotion');
-      }
-    } else {
-      Alert.alert('Promotion', 'Découvrir les offres spéciales');
-    }
+    showSuccess('Promotion appliquée ! -20% sur votre prochaine réservation');
   };
 
   const handleServiceCarouselPress = (serviceId: string) => {
@@ -126,31 +116,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const handleQuickAccessPress = (type: string) => {
     switch (type) {
-      case 'bookings':
-        if (onNavigateToBookings) {
-          onNavigateToBookings();
-        } else {
-          Alert.alert('Réservations', 'Voir mes réservations');
-        }
-        break;
-      case 'map':
-        if (onNavigateToSearch) {
-          onNavigateToSearch();
-        } else {
-          Alert.alert('Carte', 'Voir la carte des services');
-        }
-        break;
       case 'favorites':
-        Alert.alert('Favoris', 'Voir mes prestataires favoris');
+        showInfo('Vos favoris seront bientôt disponibles !');
+        break;
+      case 'recent':
+        showInfo('Vos services récents seront bientôt disponibles !');
+        break;
+      case 'nearby':
+        showInfo('Recherche de prestataires à proximité...');
+        break;
+      case 'promotions':
+        showInfo('Promotions et offres spéciales à venir !');
         break;
       default:
-        Alert.alert('Accès rapide', 'Fonctionnalité à venir');
+        showInfo('Fonctionnalité à venir');
     }
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header avec gradient inspiré du logo ADM */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+      
+      {/* Header avec gradient */}
       <LinearGradient
         colors={[COLORS.gradientStart, COLORS.gradientEnd]}
         style={styles.header}

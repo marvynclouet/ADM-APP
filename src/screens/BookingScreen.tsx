@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface BookingScreenProps {
   route?: {
@@ -24,17 +26,15 @@ interface BookingScreenProps {
   navigation?: any;
 }
 
-const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
+const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
+  const { service, provider } = route?.params || {};
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash'>('card');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Récupérer les données depuis la navigation
-  const service = route?.params?.service;
-  const provider = route?.params?.provider;
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   // Données de fallback si pas de paramètres
   const defaultService: Service = {
@@ -104,7 +104,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
   };
 
   const handlePaymentMethodSelect = (method: 'card' | 'cash') => {
-    setPaymentMethod(method);
+    setSelectedPaymentMethod(method);
   };
 
   const handleConfirmBooking = () => {
@@ -113,47 +113,46 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
       return;
     }
 
-    setShowPaymentModal(true);
+    setShowConfirmationModal(true);
   };
 
-  const handlePayment = () => {
+  const confirmBooking = () => {
+    if (!selectedDate || !selectedTime) {
+      showError('Veuillez sélectionner une date et une heure');
+      return;
+    }
+
     setIsProcessing(true);
     
     // Simuler le traitement du paiement
     setTimeout(() => {
       setIsProcessing(false);
-      setShowPaymentModal(false);
+      setShowConfirmationModal(false);
       
       // Créer la réservation
       const booking = {
         id: Date.now().toString(),
-        service: currentService,
-        provider: currentProvider,
+        service,
+        provider,
         date: selectedDate,
         time: selectedTime,
-        notes: notes,
+        paymentMethod: selectedPaymentMethod,
+        notes,
         status: 'confirmed',
-        totalPrice: currentService.price,
-        createdAt: new Date().toISOString()
+        total: service.price,
       };
 
-      // Ici vous ajouteriez la réservation à votre système de stockage
       console.log('Réservation créée:', booking);
       
-      Alert.alert(
-        'Réservation confirmée !',
-        `Votre réservation pour ${currentService.name} avec ${currentProvider.name} le ${selectedDate} à ${selectedTime} a été confirmée.`,
-        [
-          {
-            text: 'Voir mes réservations',
-            onPress: () => navigation?.navigate('Réservations')
-          },
-          {
-            text: 'OK',
-            onPress: () => navigation?.goBack()
-          }
-        ]
-      );
+      // Feedback de succès
+      showSuccess('Réservation confirmée ! Vous recevrez une confirmation par email.');
+      
+      // Naviguer vers les réservations après un délai
+      setTimeout(() => {
+        if (navigation) {
+          navigation.navigate('Réservations');
+        }
+      }, 2000);
     }, 2000);
   };
 
@@ -163,7 +162,14 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+      
+      {/* Header avec gradient */}
       <LinearGradient
         colors={[COLORS.gradientStart, COLORS.gradientEnd]}
         style={styles.header}
@@ -278,18 +284,18 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
             <TouchableOpacity
               style={[
                 styles.paymentMethod,
-                paymentMethod === 'card' && styles.selectedPaymentMethod
+                selectedPaymentMethod === 'card' && styles.selectedPaymentMethod
               ]}
               onPress={() => handlePaymentMethodSelect('card')}
             >
               <Ionicons 
                 name="card-outline" 
                 size={24} 
-                color={paymentMethod === 'card' ? COLORS.white : COLORS.primary} 
+                color={selectedPaymentMethod === 'card' ? COLORS.white : COLORS.primary} 
               />
               <Text style={[
                 styles.paymentMethodText,
-                paymentMethod === 'card' && styles.selectedPaymentMethodText
+                selectedPaymentMethod === 'card' && styles.selectedPaymentMethodText
               ]}>
                 Carte bancaire
               </Text>
@@ -298,18 +304,18 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
             <TouchableOpacity
               style={[
                 styles.paymentMethod,
-                paymentMethod === 'cash' && styles.selectedPaymentMethod
+                selectedPaymentMethod === 'cash' && styles.selectedPaymentMethod
               ]}
               onPress={() => handlePaymentMethodSelect('cash')}
             >
               <Ionicons 
                 name="cash-outline" 
                 size={24} 
-                color={paymentMethod === 'cash' ? COLORS.white : COLORS.primary} 
+                color={selectedPaymentMethod === 'cash' ? COLORS.white : COLORS.primary} 
               />
               <Text style={[
                 styles.paymentMethodText,
-                paymentMethod === 'cash' && styles.selectedPaymentMethodText
+                selectedPaymentMethod === 'cash' && styles.selectedPaymentMethodText
               ]}>
                 Espèces
               </Text>
@@ -375,7 +381,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
 
       {/* Modal de paiement */}
       <Modal
-        visible={showPaymentModal}
+        visible={showConfirmationModal}
         transparent={true}
         animationType="fade"
       >
@@ -396,20 +402,20 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
                   Montant à payer : {currentService.price}€
                 </Text>
                 <Text style={styles.paymentModalText}>
-                  Méthode : {paymentMethod === 'card' ? 'Carte bancaire' : 'Espèces'}
+                  Méthode : {selectedPaymentMethod === 'card' ? 'Carte bancaire' : 'Espèces'}
                 </Text>
                 
                 <View style={styles.paymentModalActions}>
                   <TouchableOpacity
                     style={styles.paymentModalButton}
-                    onPress={() => setShowPaymentModal(false)}
+                    onPress={() => setShowConfirmationModal(false)}
                   >
                     <Text style={styles.paymentModalButtonText}>Annuler</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
                     style={[styles.paymentModalButton, styles.paymentModalButtonConfirm]}
-                    onPress={handlePayment}
+                    onPress={confirmBooking}
                   >
                     <Text style={styles.paymentModalButtonTextConfirm}>Payer</Text>
                   </TouchableOpacity>
