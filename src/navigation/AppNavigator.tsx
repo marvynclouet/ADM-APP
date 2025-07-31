@@ -124,6 +124,21 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
   );
 };
 
+// Wrapper pour MessagesScreen avec navigation
+const MessagesScreenWrapper: React.FC<any> = ({ navigation }) => {
+  return <MessagesScreen navigation={navigation} />;
+};
+
+// Stack pour les messages
+const MessagesStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MessagesList" component={MessagesScreenWrapper} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
+    </Stack.Navigator>
+  );
+};
+
 // Stack pour les écrans de recherche avec détails
 const SearchStack = () => {
   return (
@@ -176,7 +191,7 @@ const MainStack = () => {
       />
       <Tab.Screen
         name="Messages"
-        component={MessagesScreen}
+        component={MessagesStack}
         options={{
           tabBarLabel: 'Messages',
           tabBarIcon: ({ color, size }) => (
