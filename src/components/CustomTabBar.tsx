@@ -10,20 +10,7 @@ interface CustomTabBarProps {
 }
 
 const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const getIconName = (routeName: string, focused: boolean) => {
-    switch (routeName) {
-      case 'Accueil':
-        return focused ? 'home' : 'home-outline';
-      case 'Recherche':
-        return focused ? 'search' : 'search-outline';
-      case 'Réservations':
-        return focused ? 'calendar' : 'calendar-outline';
-      case 'Profil':
-        return focused ? 'person' : 'person-outline';
-      default:
-        return 'home-outline';
-    }
-  };
+  const unreadMessages = 3; // Mock data - in real app, this would come from state management
 
   return (
     <View style={styles.container}>
@@ -52,10 +39,24 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
           });
         };
 
-        // Ne pas afficher le tab "Prestataire" car il est caché
-        if (route.name === 'Prestataire') {
-          return null;
-        }
+        const getIconName = () => {
+          switch (route.name) {
+            case 'Home':
+              return 'home';
+            case 'Search':
+              return 'search';
+            case 'Messages':
+              return 'chatbubble';
+            case 'Bookings':
+              return 'calendar';
+            case 'Profil':
+              return 'person';
+            default:
+              return 'home';
+          }
+        };
+
+        const showBadge = route.name === 'Messages' && unreadMessages > 0;
 
         return (
           <TouchableOpacity
@@ -67,23 +68,25 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tab}
-            activeOpacity={0.7}
           >
-            <View style={styles.tabContent}>
+            <View style={styles.iconContainer}>
               <Ionicons
-                name={getIconName(route.name, isFocused)}
+                name={getIconName() as any}
                 size={24}
                 color={isFocused ? COLORS.primary : COLORS.textSecondary}
-                style={styles.icon}
               />
-              <Text style={[
-                styles.label,
-                { color: isFocused ? COLORS.primary : COLORS.textSecondary }
-              ]}>
-                {label}
-              </Text>
-              {isFocused && <View style={styles.activeIndicator} />}
+              {showBadge && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </Text>
+                </View>
+              )}
             </View>
+            <Text style={[styles.label, isFocused && styles.labelFocused]}>
+              {label}
+            </Text>
+            {isFocused && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
         );
       })}
@@ -95,37 +98,29 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    paddingTop: 10,
-    height: Platform.OS === 'ios' ? 90 : 70,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
+    boxShadow: '0px -2px 8px rgba(0, 0, 0, 0.1)',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 8,
   },
-  tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  iconContainer: {
     position: 'relative',
-  },
-  icon: {
     marginBottom: 4,
   },
   label: {
     fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  labelFocused: {
+    color: COLORS.primary,
     fontWeight: '600',
-    textAlign: 'center',
   },
   activeIndicator: {
     position: 'absolute',
@@ -134,6 +129,23 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: COLORS.primary,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
 });
 

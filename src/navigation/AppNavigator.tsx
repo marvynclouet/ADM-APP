@@ -19,6 +19,8 @@ import CustomTabBar from '../components/CustomTabBar';
 import { COLORS } from '../constants/colors';
 import { SERVICE_PROVIDERS } from '../constants/mockData';
 import { Alert } from 'react-native';
+import MessagesScreen from '../screens/MessagesScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -129,6 +131,7 @@ const SearchStack = () => {
       <Stack.Screen name="SearchMain" component={SearchScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Réservation" component={BookingScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 };
@@ -161,12 +164,34 @@ const MainStack = () => {
           tabBarTestID: 'home-tab',
         }}
       />
-      <Tab.Screen 
-        name="Recherche" 
+      <Tab.Screen
+        name="Search"
         component={SearchStack}
         options={{
-          tabBarLabel: 'Recherche',
-          tabBarTestID: 'search-tab',
+          tabBarLabel: 'Rechercher',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesScreen}
+        options={{
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Bookings"
+        component={BookingsScreen}
+        options={{
+          tabBarLabel: 'Réservations',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen 
@@ -175,14 +200,6 @@ const MainStack = () => {
         options={{
           tabBarLabel: 'Prestataire',
           tabBarButton: () => null,
-        }}
-      />
-      <Tab.Screen 
-        name="Réservations" 
-        component={BookingsScreen}
-        options={{
-          tabBarLabel: 'Réservations',
-          tabBarTestID: 'bookings-tab',
         }}
       />
       <Tab.Screen 
