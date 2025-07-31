@@ -210,14 +210,6 @@ const MainStack = () => {
         }}
       />
       <Tab.Screen 
-        name="Prestataire" 
-        component={ProviderStack}
-        options={{
-          tabBarLabel: 'Prestataire',
-          tabBarButton: () => null,
-        }}
-      />
-      <Tab.Screen 
         name="Profil" 
         component={(props) => <ProfileScreen {...props} />}
         options={{
