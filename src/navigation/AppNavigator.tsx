@@ -1,0 +1,247 @@
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
+import HomeScreen from '../screens/HomeScreen';
+import SearchScreen from '../screens/SearchScreen';
+import BookingsScreen from '../screens/BookingsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import ProviderDetailScreen from '../screens/ProviderDetailScreen';
+import BookingScreen from '../screens/BookingScreen';
+import AuthScreen from '../screens/AuthScreen';
+import ProviderHomeScreen from '../screens/ProviderHomeScreen';
+import ProviderMessagesScreen from '../screens/ProviderMessagesScreen';
+import ProviderBookingsScreen from '../screens/ProviderBookingsScreen';
+import ProviderShopScreen from '../screens/ProviderShopScreen';
+import CustomTabBar from '../components/CustomTabBar';
+import { COLORS } from '../constants/colors';
+import { SERVICE_PROVIDERS } from '../constants/mockData';
+import { Alert } from 'react-native';
+
+const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// Wrapper pour HomeScreen avec navigation
+const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
+  const handleNavigateToSearch = () => {
+    navigation.navigate('Recherche');
+  };
+
+  const handleNavigateToProvider = (providerId: string) => {
+    // Trouver le prestataire par ID
+    const provider = SERVICE_PROVIDERS.find(p => p.id === providerId);
+    if (provider) {
+      // Naviguer vers la page de détail du prestataire
+      navigation.navigate('Prestataire', { provider });
+    } else {
+      // Fallback vers la recherche
+      navigation.navigate('Recherche');
+    }
+  };
+
+  const handleNavigateToCategory = (categoryId: string) => {
+    // Naviguer vers la recherche avec la catégorie sélectionnée
+    navigation.navigate('Recherche');
+  };
+
+  const handleNavigateToService = (serviceId: string) => {
+    // Naviguer vers la recherche avec le service sélectionné
+    navigation.navigate('Recherche');
+  };
+
+  const handleNavigateToProfile = () => {
+    navigation.navigate('Profil');
+  };
+
+  const handleNavigateToBookings = () => {
+    navigation.navigate('Réservations');
+  };
+
+  return (
+    <HomeScreen
+      onNavigateToSearch={handleNavigateToSearch}
+      onNavigateToProvider={handleNavigateToProvider}
+      onNavigateToCategory={handleNavigateToCategory}
+      onNavigateToService={handleNavigateToService}
+      onNavigateToProfile={handleNavigateToProfile}
+      onNavigateToBookings={handleNavigateToBookings}
+    />
+  );
+};
+
+// Wrapper pour ProviderHomeScreen avec navigation
+const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
+  const handleNavigateToBookings = () => {
+    navigation.navigate('ProviderBookings');
+  };
+
+  const handleNavigateToMessages = () => {
+    navigation.navigate('ProviderMessages');
+  };
+
+  const handleNavigateToServices = () => {
+    Alert.alert('Services', 'Gérer mes services - Fonctionnalité à venir');
+  };
+
+  const handleNavigateToProfile = () => {
+    Alert.alert('Profil', 'Modifier mon profil - Fonctionnalité à venir');
+  };
+
+  const handleNavigateToEarnings = () => {
+    Alert.alert('Revenus', 'Voir mes revenus - Fonctionnalité à venir');
+  };
+
+  const handleNavigateToSchedule = () => {
+    Alert.alert('Planning', 'Gérer mon planning - Fonctionnalité à venir');
+  };
+
+  const handleNavigateToShop = () => {
+    navigation.navigate('ProviderShop');
+  };
+
+  const handleLogout = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Auth' }],
+    });
+  };
+
+  return (
+    <ProviderHomeScreen
+      onNavigateToBookings={handleNavigateToBookings}
+      onNavigateToMessages={handleNavigateToMessages}
+      onNavigateToServices={handleNavigateToServices}
+      onNavigateToProfile={handleNavigateToProfile}
+      onNavigateToEarnings={handleNavigateToEarnings}
+      onNavigateToSchedule={handleNavigateToSchedule}
+      onNavigateToShop={handleNavigateToShop}
+      onLogout={handleLogout}
+    />
+  );
+};
+
+// Stack pour les écrans de recherche avec détails
+const SearchStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SearchMain" component={SearchScreen} />
+      <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="Réservation" component={BookingScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// Stack pour les prestataires
+const ProviderStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProviderMain" component={ProviderDetailScreen} />
+      <Stack.Screen name="Réservation" component={BookingScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// Stack principal de l'application avec tab bar (Mode Client)
+const MainStack = () => {
+  return (
+    <Tab.Navigator
+      tabBar={props => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+      }}
+    >
+      <Tab.Screen 
+        name="Accueil" 
+        component={HomeScreenWrapper}
+        options={{
+          tabBarLabel: 'Accueil',
+          tabBarTestID: 'home-tab',
+        }}
+      />
+      <Tab.Screen 
+        name="Recherche" 
+        component={SearchStack}
+        options={{
+          tabBarLabel: 'Recherche',
+          tabBarTestID: 'search-tab',
+        }}
+      />
+      <Tab.Screen 
+        name="Prestataire" 
+        component={ProviderStack}
+        options={{
+          tabBarLabel: 'Prestataire',
+          tabBarButton: () => null,
+        }}
+      />
+      <Tab.Screen 
+        name="Réservations" 
+        component={BookingsScreen}
+        options={{
+          tabBarLabel: 'Réservations',
+          tabBarTestID: 'bookings-tab',
+        }}
+      />
+      <Tab.Screen 
+        name="Profil" 
+        component={(props) => <ProfileScreen {...props} />}
+        options={{
+          tabBarLabel: 'Profil',
+          tabBarTestID: 'profile-tab',
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+// Stack pour les prestataires (Mode Prestataire)
+const ProviderModeStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProviderHome" component={ProviderHomeScreenWrapper} />
+      <Stack.Screen name="ProviderBookings" component={ProviderBookingsScreen} />
+      <Stack.Screen name="ProviderMessages" component={ProviderMessagesScreen} />
+      <Stack.Screen name="ProviderShop" component={ProviderShopScreen} />
+    </Stack.Navigator>
+  );
+};
+
+const AppNavigator: React.FC = () => {
+  console.log('AppNavigator rendering');
+  
+  return (
+    <NavigationContainer>
+      <Stack.Navigator 
+        screenOptions={{ headerShown: false }}
+        initialRouteName="Auth"
+      >
+        <Stack.Screen 
+          name="Auth" 
+          component={(props) => {
+            console.log('AuthScreen props:', props);
+            return <AuthScreen {...props} />;
+          }} 
+        />
+        <Stack.Screen 
+          name="Main" 
+          component={(props) => {
+            console.log('MainStack props:', props);
+            return <MainStack {...props} />;
+          }} 
+        />
+        <Stack.Screen 
+          name="Provider" 
+          component={(props) => {
+            console.log('ProviderModeStack props:', props);
+            return <ProviderModeStack {...props} />;
+          }} 
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+export default AppNavigator; 
