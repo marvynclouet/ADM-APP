@@ -28,29 +28,32 @@ const Stack = createStackNavigator();
 // Wrapper pour HomeScreen avec navigation
 const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
   const handleNavigateToSearch = () => {
-    navigation.navigate('Recherche');
+    navigation.navigate('Search');
   };
 
   const handleNavigateToProvider = (providerId: string) => {
     // Trouver le prestataire par ID
     const provider = SERVICE_PROVIDERS.find(p => p.id === providerId);
     if (provider) {
-      // Naviguer vers la page de détail du prestataire
-      navigation.navigate('Prestataire', { provider });
+      // Naviguer vers la page de détail du prestataire dans SearchStack
+      navigation.navigate('Search', { 
+        screen: 'ProviderDetail',
+        params: { provider }
+      });
     } else {
       // Fallback vers la recherche
-      navigation.navigate('Recherche');
+      navigation.navigate('Search');
     }
   };
 
   const handleNavigateToCategory = (categoryId: string) => {
     // Naviguer vers la recherche avec la catégorie sélectionnée
-    navigation.navigate('Recherche');
+    navigation.navigate('Search');
   };
 
   const handleNavigateToService = (serviceId: string) => {
     // Naviguer vers la recherche avec le service sélectionné
-    navigation.navigate('Recherche');
+    navigation.navigate('Search');
   };
 
   const handleNavigateToProfile = () => {
@@ -58,7 +61,7 @@ const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
   };
 
   const handleNavigateToBookings = () => {
-    navigation.navigate('Réservations');
+    navigation.navigate('Bookings');
   };
 
   return (
