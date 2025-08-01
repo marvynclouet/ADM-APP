@@ -12,7 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MOCK_BOOKINGS } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
 
-const BookingsScreen: React.FC = () => {
+interface BookingsScreenProps {
+  navigation?: any;
+}
+
+const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
 
   const upcomingBookings = MOCK_BOOKINGS.filter(booking => 
@@ -52,6 +56,46 @@ const BookingsScreen: React.FC = () => {
     }
   };
 
+  const handleViewDetails = (booking: any) => {
+    // Créer un objet booking complet pour la page de confirmation
+    const bookingDetails = {
+      id: booking.id,
+      service: {
+        name: 'Coupe + Brushing',
+        price: booking.totalPrice,
+        duration: 60,
+      },
+      provider: {
+        name: 'Marie Dubois',
+        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200',
+        phone: '06 12 34 56 78',
+        address: '15 rue de la Paix, Paris',
+      },
+      date: booking.date,
+      time: booking.time,
+      paymentMethod: 'card',
+      notes: 'Cheveux longs, brushing volumineux',
+      status: booking.status,
+      total: booking.totalPrice,
+      createdAt: booking.createdAt || new Date().toISOString(),
+    };
+
+    if (navigation) {
+      navigation.navigate('BookingConfirmation', { booking: bookingDetails });
+    }
+  };
+
+  const handleCancelBooking = (booking: any) => {
+    // Logique pour annuler une réservation
+    console.log('Annulation de la réservation:', booking.id);
+  };
+
+  const handleReserveService = () => {
+    if (navigation) {
+      navigation.navigate('Search');
+    }
+  };
+
   const renderBookingCard = (booking: any) => (
     <View key={booking.id} style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
@@ -79,11 +123,17 @@ const BookingsScreen: React.FC = () => {
       </View>
       
       <View style={styles.bookingActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleViewDetails(booking)}
+        >
           <Text style={styles.actionButtonText}>Voir détails</Text>
         </TouchableOpacity>
         {booking.status === 'pending' && (
-          <TouchableOpacity style={[styles.actionButton, styles.cancelButton]}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => handleCancelBooking(booking)}
+          >
             <Text style={styles.cancelButtonText}>Annuler</Text>
           </TouchableOpacity>
         )}
@@ -130,7 +180,10 @@ const BookingsScreen: React.FC = () => {
               <Text style={styles.emptyStateText}>
                 Vous n'avez pas encore de réservations programmées
               </Text>
-              <TouchableOpacity style={styles.primaryButton}>
+              <TouchableOpacity 
+                style={styles.primaryButton}
+                onPress={handleReserveService}
+              >
                 <Text style={styles.primaryButtonText}>Réserver un service</Text>
               </TouchableOpacity>
             </View>

@@ -138,6 +138,11 @@ const SearchScreenWrapper: React.FC<any> = ({ navigation }) => {
   return <SearchScreen navigation={navigation} />;
 };
 
+// Wrapper pour BookingsScreen avec navigation
+const BookingsScreenWrapper: React.FC<any> = ({ navigation }) => {
+  return <BookingsScreen navigation={navigation} />;
+};
+
 // Stack pour les messages
 const MessagesStack = () => {
   return (
@@ -172,8 +177,8 @@ const ProviderStack = () => {
   );
 };
 
-// Stack principal de l'application avec tab bar (Mode Client)
-const MainStack = () => {
+// Tab Navigator pour le mode client
+const MainTabs = () => {
   return (
     <Tab.Navigator
       tabBar={props => <CustomTabBar {...props} />}
@@ -212,7 +217,7 @@ const MainStack = () => {
       />
       <Tab.Screen
         name="Bookings"
-        component={BookingsScreen}
+        component={BookingsScreenWrapper}
         options={{
           tabBarLabel: 'Réservations',
           tabBarIcon: ({ color, size }) => (
@@ -229,6 +234,16 @@ const MainStack = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+// Stack principal de l'application avec tab bar (Mode Client)
+const MainStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+    </Stack.Navigator>
   );
 };
 
