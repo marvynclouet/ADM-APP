@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   Alert,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,11 +41,66 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const { toast, showSuccess, showInfo, hideToast } = useToast();
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const carouselAnim = useRef(new Animated.Value(0)).current;
+  const providersAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
   // Données utilisateur avec image d'API
   const user = {
     name: 'Marie',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie&backgroundColor=b6e3f4'
   };
+
+  // Animation d'entrée
+  useEffect(() => {
+    const animations = [
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(carouselAnim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(providersAnim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 600,
+        useNativeDriver: true,
+      }),
+    ];
+
+    Animated.parallel(animations).start();
+
+    // Animation de pulsation continue pour le logo
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    pulseAnimation.start();
+  }, []);
 
   const handleSearchPress = () => {
     if (onNavigateToSearch) {
@@ -143,59 +199,94 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       />
       
       {/* Header avec gradient inspiré du logo ADM */}
-      <LinearGradient
-        colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-        style={styles.header}
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
       >
-        <View style={styles.headerContent}>
-          {/* Message de bienvenue avec avatar - CLIQUABLE */}
-          <TouchableOpacity 
-            style={styles.welcomeContainer}
-            onPress={handleUserProfilePress}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{ uri: user.avatar }}
-              style={styles.userAvatar}
-            />
-            <View style={styles.welcomeText}>
-              <Text style={styles.welcomeTitle}>Bienvenue !</Text>
-              <Text style={styles.userName}>{user.name}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.white} style={styles.welcomeArrow} />
-          </TouchableOpacity>
-          
-          {/* Logo ADM centré dans un rond - CLIQUABLE */}
-          <TouchableOpacity 
-            style={styles.logoContainer}
-            onPress={() => Alert.alert('ADM', 'Logo ADM - Accueil')}
-            activeOpacity={0.8}
-          >
-            <Logo size="medium" showText={false} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Barre de recherche - CLIQUABLE */}
-        <TouchableOpacity 
-          style={styles.searchContainer}
-          onPress={handleSearchPress}
-          activeOpacity={0.9}
+        <LinearGradient
+          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+          style={styles.header}
         >
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={20} color={COLORS.textSecondary} />
-            <Text style={styles.searchPlaceholder}>
-              Rechercher une prestation...
-            </Text>
-            <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
+          <View style={styles.headerContent}>
+            {/* Message de bienvenue avec avatar - CLIQUABLE */}
+            <TouchableOpacity 
+              style={styles.welcomeContainer}
+              onPress={handleUserProfilePress}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{ uri: user.avatar }}
+                style={styles.userAvatar}
+              />
+              <View style={styles.welcomeText}>
+                <Text style={styles.welcomeTitle}>Bienvenue !</Text>
+                <Text style={styles.userName}>{user.name}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.white} style={styles.welcomeArrow} />
+            </TouchableOpacity>
+            
+            {/* Logo ADM centré dans un rond - CLIQUABLE avec animation de pulsation */}
+            <Animated.View
+              style={[
+                styles.logoContainer,
+                {
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            >
+              <TouchableOpacity 
+                onPress={() => Alert.alert('ADM', 'Logo ADM - Accueil')}
+                activeOpacity={0.8}
+              >
+                <Logo size="medium" showText={false} />
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-        </TouchableOpacity>
-      </LinearGradient>
 
-      {/* Carousel des services - CLIQUABLE */}
-      <ServiceCarousel 
-        onServicePress={handleServiceCarouselPress}
-        onSeeAllPress={handleSeeAllProviders}
-      />
+          {/* Barre de recherche - CLIQUABLE */}
+          <TouchableOpacity 
+            style={styles.searchContainer}
+            onPress={handleSearchPress}
+            activeOpacity={0.9}
+          >
+            <View style={styles.searchInputContainer}>
+              <Ionicons name="search" size={20} color={COLORS.textSecondary} />
+              <Text style={styles.searchPlaceholder}>
+                Rechercher une prestation...
+              </Text>
+              <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
+            </View>
+          </TouchableOpacity>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* Carousel des services - CLIQUABLE avec animation */}
+      <Animated.View
+        style={[
+          styles.carouselContainer,
+          {
+            opacity: carouselAnim,
+            transform: [
+              {
+                translateY: carouselAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <ServiceCarousel 
+          onServicePress={handleServiceCarouselPress}
+          onSeeAllPress={handleSeeAllProviders}
+        />
+      </Animated.View>
 
       {/* Catégories - CLIQUABLES */}
       <View style={styles.section}>
@@ -205,18 +296,47 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
-          {SERVICE_CATEGORIES.map((category) => (
-            <CategoryCard
+          {SERVICE_CATEGORIES.map((category, index) => (
+            <Animated.View
               key={category.id}
-              category={category}
-              onPress={() => handleCategoryPress(category.id)}
-            />
+              style={{
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateX: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50 * (index + 1), 0],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <CategoryCard
+                category={category}
+                onPress={() => handleCategoryPress(category.id)}
+              />
+            </Animated.View>
           ))}
         </ScrollView>
       </View>
 
-      {/* Prestataires populaires - CLIQUABLES */}
-      <View style={styles.section}>
+      {/* Prestataires populaires - CLIQUABLES avec animation */}
+      <Animated.View
+        style={[
+          styles.providersSection,
+          {
+            opacity: providersAnim,
+            transform: [
+              {
+                translateY: providersAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Prestataires populaires</Text>
           <TouchableOpacity onPress={handleSeeAllProviders} activeOpacity={0.7}>
@@ -224,14 +344,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
         
-        {SERVICE_PROVIDERS.map((provider) => (
-          <ProviderCard
+        {SERVICE_PROVIDERS.map((provider, index) => (
+          <Animated.View
             key={provider.id}
-            provider={provider}
-            onPress={() => handleProviderPress(provider.id)}
-          />
+            style={{
+              opacity: providersAnim,
+              transform: [
+                {
+                  translateX: providersAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100 * (index + 1), 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <ProviderCard
+              provider={provider}
+              onPress={() => handleProviderPress(provider.id)}
+            />
+          </Animated.View>
         ))}
-      </View>
+      </Animated.View>
 
       {/* Services en promotion - CLIQUABLE */}
       <View style={styles.section}>
@@ -300,10 +434,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  headerContainer: {
+    // Styles pour le conteneur du header animé
+  },
   header: {
-    paddingTop: 20,
-    paddingBottom: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
     paddingHorizontal: 16,
+    marginBottom: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -328,10 +466,10 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 14,
     color: COLORS.white,
-    opacity: 0.9,
+    marginBottom: 2,
   },
   userName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.white,
   },
@@ -360,9 +498,12 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
     fontSize: 16,
     color: COLORS.textSecondary,
+  },
+  carouselContainer: {
+    marginTop: 20,
   },
   section: {
     marginTop: 24,
@@ -388,6 +529,9 @@ const styles = StyleSheet.create({
   categoriesContainer: {
     paddingVertical: 8,
   },
+  providersSection: {
+    marginTop: 20,
+  },
   promotionCard: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -403,15 +547,13 @@ const styles = StyleSheet.create({
   promotionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: COLORS.textPrimary,
     marginBottom: 4,
-    textAlign: 'center',
   },
   promotionSubtitle: {
     fontSize: 16,
-    color: COLORS.white,
-    marginBottom: 20,
-    textAlign: 'center',
+    color: COLORS.textSecondary,
+    marginBottom: 16,
   },
   promotionButton: {
     flexDirection: 'row',
