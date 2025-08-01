@@ -10,6 +10,7 @@ import BookingsScreen from '../screens/BookingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProviderDetailScreen from '../screens/ProviderDetailScreen';
 import BookingScreen from '../screens/BookingScreen';
+import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
 import AuthScreen from '../screens/AuthScreen';
 import ProviderHomeScreen from '../screens/ProviderHomeScreen';
 import ProviderMessagesScreen from '../screens/ProviderMessagesScreen';
@@ -154,6 +155,7 @@ const SearchStack = () => {
       <Stack.Screen name="SearchMain" component={SearchScreenWrapper} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Réservation" component={BookingScreen} />
+      <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
@@ -165,6 +167,7 @@ const ProviderStack = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProviderMain" component={ProviderDetailScreen} />
       <Stack.Screen name="Réservation" component={BookingScreen} />
+      <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
     </Stack.Navigator>
   );
 };

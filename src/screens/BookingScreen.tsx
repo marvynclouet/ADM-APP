@@ -147,10 +147,10 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
       // Feedback de succès
       showSuccess('Réservation confirmée ! Vous recevrez une confirmation par email.');
       
-      // Naviguer vers les réservations après un délai
+      // Naviguer vers la page de confirmation après un délai
       setTimeout(() => {
         if (navigation) {
-          navigation.navigate('Réservations');
+          navigation.navigate('BookingConfirmation', { booking });
         }
       }, 2000);
     }, 2000);
