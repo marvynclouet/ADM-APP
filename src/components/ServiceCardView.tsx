@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
+import FavoriteButton from './FavoriteButton';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 48) / 2; // 2 colonnes avec marges
@@ -19,6 +20,8 @@ interface ServiceCardViewProps {
   provider: ServiceProvider;
   distance: number;
   onPress: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const ServiceCardView: React.FC<ServiceCardViewProps> = ({
@@ -26,6 +29,8 @@ const ServiceCardView: React.FC<ServiceCardViewProps> = ({
   provider,
   distance,
   onPress,
+  isFavorite = false,
+  onToggleFavorite,
 }) => {
   const formatDistance = (km: number) => {
     if (km < 1) {
@@ -41,11 +46,25 @@ const ServiceCardView: React.FC<ServiceCardViewProps> = ({
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       {/* Image du service */}
-      <Image
-        source={{ uri: service.image }}
-        style={styles.serviceImage}
-        resizeMode="cover"
-      />
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: service.image }}
+          style={styles.serviceImage}
+          resizeMode="cover"
+        />
+        {onToggleFavorite && (
+          <View style={styles.favoriteButtonOverlay}>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onToggleFavorite();
+              }}
+              size={20}
+            />
+          </View>
+        )}
+      </View>
       
       {/* Badge de distance */}
       <View style={styles.distanceBadge}>
@@ -101,14 +120,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
   },
-  serviceImage: {
+  imageContainer: {
+    position: 'relative',
     width: '100%',
     height: 120,
   },
-  distanceBadge: {
+  serviceImage: {
+    width: '100%',
+    height: '100%',
+  },
+  favoriteButtonOverlay: {
     position: 'absolute',
     top: 8,
     right: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.2)',
+  },
+  distanceBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     flexDirection: 'row',
     alignItems: 'center',

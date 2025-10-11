@@ -241,16 +241,6 @@ const MainTabs = () => {
           ),
         }}
       />
-      <Tab.Screen
-        name="Messages"
-        component={MessagesStack}
-        options={{
-          tabBarLabel: 'Messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble" size={size} color={color} />
-          ),
-        }}
-      />
       <Tab.Screen 
         name="Profil" 
         component={(props) => <ProfileScreen {...props} />}

@@ -20,6 +20,7 @@ import { SERVICE_CATEGORIES, SERVICE_PROVIDERS, SERVICES } from '../constants/mo
 import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import { useFavorites } from '../hooks/useFavorites';
 
 interface HomeScreenProps {
   onNavigateToSearch?: () => void;
@@ -40,6 +41,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const { toast, showSuccess, showInfo, hideToast } = useToast();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -362,6 +364,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <ProviderCard
               provider={provider}
               onPress={() => handleProviderPress(provider.id)}
+              isFavorite={isFavorite(provider.id)}
+              onToggleFavorite={async () => {
+                await toggleFavorite(provider.id);
+                if (isFavorite(provider.id)) {
+                  showInfo('Retiré des favoris');
+                } else {
+                  showSuccess('Ajouté aux favoris ❤️');
+                }
+              }}
             />
           </Animated.View>
         ))}

@@ -3,13 +3,23 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
+import FavoriteButton from './FavoriteButton';
 
 interface ProviderCardProps {
   provider: ServiceProvider;
   onPress: () => void;
+  showFavoriteButton?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-const ProviderCard: React.FC<ProviderCardProps> = ({ provider, onPress }) => {
+const ProviderCard: React.FC<ProviderCardProps> = ({ 
+  provider, 
+  onPress,
+  showFavoriteButton = true,
+  isFavorite = false,
+  onToggleFavorite,
+}) => {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <Image 
@@ -42,8 +52,22 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, onPress }) => {
         </View>
       </View>
       
-      <View style={styles.arrow}>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+      <View style={styles.actions}>
+        {showFavoriteButton && onToggleFavorite && (
+          <View style={styles.favoriteButton}>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onToggleFavorite();
+              }}
+              size={22}
+            />
+          </View>
+        )}
+        <View style={styles.arrow}>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -116,8 +140,16 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     marginLeft: 4,
   },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  favoriteButton: {
+    padding: 4,
+  },
   arrow: {
-    marginLeft: 8,
+    marginLeft: 4,
   },
 });
 

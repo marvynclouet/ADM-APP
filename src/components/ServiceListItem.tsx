@@ -9,12 +9,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
+import FavoriteButton from './FavoriteButton';
 
 interface ServiceListItemProps {
   service: Service;
   provider: ServiceProvider;
   distance: number;
   onPress: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const ServiceListItem: React.FC<ServiceListItemProps> = ({
@@ -22,6 +25,8 @@ const ServiceListItem: React.FC<ServiceListItemProps> = ({
   provider,
   distance,
   onPress,
+  isFavorite = false,
+  onToggleFavorite,
 }) => {
   const formatDistance = (km: number) => {
     if (km < 1) {
@@ -46,11 +51,25 @@ const ServiceListItem: React.FC<ServiceListItemProps> = ({
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       {/* Image du service */}
-      <Image
-        source={{ uri: service.image }}
-        style={styles.serviceImage}
-        resizeMode="cover"
-      />
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: service.image }}
+          style={styles.serviceImage}
+          resizeMode="cover"
+        />
+        {onToggleFavorite && (
+          <View style={styles.favoriteButtonOverlay}>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onToggleFavorite();
+              }}
+              size={24}
+            />
+          </View>
+        )}
+      </View>
       
       {/* Informations du service */}
       <View style={styles.content}>
@@ -108,9 +127,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
   },
-  serviceImage: {
+  imageContainer: {
+    position: 'relative',
     width: '100%',
     height: 160,
+  },
+  serviceImage: {
+    width: '100%',
+    height: '100%',
+  },
+  favoriteButtonOverlay: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.2)',
   },
   content: {
     padding: 16,

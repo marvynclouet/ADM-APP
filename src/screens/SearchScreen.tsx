@@ -20,6 +20,8 @@ import { COLORS } from '../constants/colors';
 import { Service } from '../types';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import { useFavorites } from '../hooks/useFavorites';
+import ProviderCard from '../components/ProviderCard';
 
 interface SearchScreenProps {
   navigation?: any;
@@ -31,7 +33,8 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [showMap, setShowMap] = useState(false);
-  const { toast, showInfo, hideToast } = useToast();
+  const { toast, showInfo, showSuccess, hideToast } = useToast();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   // Combiner les services avec leurs prestataires et distances
   const servicesWithProviders = useMemo(() => {
@@ -275,6 +278,15 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
                     provider={item.provider}
                     distance={item.distance}
                     onPress={() => handleServicePress(item.service.id)}
+                    isFavorite={isFavorite(item.provider.id)}
+                    onToggleFavorite={async () => {
+                      await toggleFavorite(item.provider.id);
+                      if (isFavorite(item.provider.id)) {
+                        showInfo('Retiré des favoris');
+                      } else {
+                        showSuccess('Ajouté aux favoris ❤️');
+                      }
+                    }}
                   />
                 ) : (
                   <ServiceCardView
@@ -282,6 +294,15 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
                     provider={item.provider}
                     distance={item.distance}
                     onPress={() => handleServicePress(item.service.id)}
+                    isFavorite={isFavorite(item.provider.id)}
+                    onToggleFavorite={async () => {
+                      await toggleFavorite(item.provider.id);
+                      if (isFavorite(item.provider.id)) {
+                        showInfo('Retiré des favoris');
+                      } else {
+                        showSuccess('Ajouté aux favoris ❤️');
+                      }
+                    }}
                   />
                 )
               }
