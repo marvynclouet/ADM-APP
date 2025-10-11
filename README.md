@@ -1,6 +1,24 @@
-# ADM Beauty Booking App
+# ADM - Autour de Moi
 
-Application mobile de réservation de services de beauté pour particuliers, développée avec React Native et Expo.
+**ADM (Autour de Moi)** est une application mobile de mise en relation entre clients et prestataires indépendants dans les domaines de la beauté et des services urbains (coiffure, maquillage, ongles, perruques, cils, etc.).
+
+🔗 **Repository**: https://github.com/marvynclouet/ADM-APP
+
+## 🎯 Objectifs de l'application
+
+### Pour les clients
+- Trouver facilement un prestataire disponible à proximité
+- Réserver une prestation rapidement
+- Système de réservation d'urgence (sous 30 minutes)
+- Paiement sécurisé intégré
+
+### Pour les prestataires
+- Gagner en visibilité
+- Gérer leurs rendez-vous
+- Développer leur activité
+- Professionnaliser leur service
+
+**Public cible** : Jeunes adultes, particuliers cherchant praticité et rapidité, prestataires indépendants souhaitant professionnaliser leur activité.
 
 ## 🚀 Déploiement
 
@@ -32,30 +50,81 @@ Application mobile de réservation de services de beauté pour particuliers, dé
 2. **Installez** gh-pages: `npm install --save-dev gh-pages`
 3. **Déployez** : `npm run deploy`
 
-## 📱 Fonctionnalités
+## 📱 Fonctionnalités (Version Actuelle - MVP)
 
-### Mode Client
-- 🔍 Recherche de services par catégorie
-- 📍 Géolocalisation et tri par proximité
-- 🗺️ Vue carte interactive
-- 📅 Système de réservation complet
-- 💳 Simulation de paiement
-- 👤 Profil utilisateur
+### Mode Client ✅
+- ✅ **Recherche avancée** : Par catégorie, prix, distance, disponibilité
+- ✅ **Géolocalisation** : Tri par proximité
+- ✅ **Vue carte interactive** : Visualisation des prestataires sur une carte
+- ✅ **Système de réservation** : Sélection de service, date/heure, notes
+- ✅ **Paiement intégré** : Simulation de paiement (CB, PayPal, Apple Pay)
+- ✅ **Profil utilisateur** : Gestion des informations personnelles
+- ✅ **Favoris** : Sauvegarde des prestataires préférés
+- ✅ **Messagerie** : Communication avec les prestataires
+- ✅ **Historique** : Suivi des réservations passées et à venir
+- ✅ **Notifications visuelles** : Toast pour feedback immédiat
+- ✅ **Ajout au calendrier** : Export vers Google/Apple Calendar
 
-### Mode Prestataire
-- 🏪 Gestion de boutique
-- 📊 Tableau de bord avec statistiques
-- 📅 Gestion des réservations
-- 💬 Messagerie avec clients
-- 💰 Suivi des revenus
-- ⚙️ Gestion des services
+### Mode Prestataire ✅
+- ✅ **Tableau de bord** : Vue d'ensemble de l'activité
+- ✅ **Gestion de boutique** : Services proposés, prix, descriptions
+- ✅ **Gestion des réservations** : Accepter/refuser les demandes
+- ✅ **Messagerie intégrée** : Communication avec les clients
+- ✅ **Statistiques** : Revenus, nombre de clients, réservations
+- ✅ **Profil professionnel** : Photo, description, services, localisation
 
-## 🎨 Design
+## 🚧 Fonctionnalités à venir (Feuille de route)
 
-- **Couleurs** : Palette ADM (bleu foncé et blanc)
-- **Logo** : ADM intégré dans toute l'application
-- **UI/UX** : Interface moderne et intuitive
-- **Responsive** : Adapté mobile et desktop
+### Phase 2 - Système avancé
+- ⏳ **Réservations d'urgence** (sous 30 minutes)
+  - Crédits pour clients
+  - Mode urgence pour prestataires Premium
+- ⏳ **Système de niveaux** : Débutant, Intermédiaire, Avancé, Professionnel
+- ⏳ **Diplômes vérifiés** : Upload et validation des certifications
+- ⏳ **Abonnements Premium** : Pour clients et prestataires
+- ⏳ **Paiement espèces** : Avec système de commission différée
+
+### Phase 3 - Collaboration & Marketing
+- ⏳ **Associations entre prestataires** : Services complémentaires
+- ⏳ **Promotions & codes réduction** : Outils marketing
+- ⏳ **Boost de visibilité** : Mise en avant temporaire
+- ⏳ **Système de points de fidélité** : Récompenses clients
+
+### Phase 4 - Extensions
+- ⏳ **Interface web** : Version desktop pour prestataires
+- ⏳ **Partenariats** : Marques de beauté, événements
+- ⏳ **Nouvelles catégories** : Extension des services
+
+## 🎨 Catégories de services
+
+### Beauté & Coiffure
+- Coiffure (hommes, femmes, enfants, locks, tresses, brushing)
+- Maquillage
+- Ongles
+- Cils
+- Perruques / Lace
+- Barber (barbe, contours)
+
+### Services urbains complémentaires (à venir)
+- Grillz (pose et entretien)
+- Nettoyage chaussures
+- Nettoyage habits
+- Couture / retouches
+- Soins visage & corps (massage, gommage)
+
+## 🎨 Design & Interface
+
+- **Couleurs principales** : Bleu (#003366) et Blanc
+- **Logo ADM** : Intégré dans toute l'application
+- **UI/UX** : Interface claire et intuitive, inspirée d'Airbnb et Uber
+- **Navigation** : 5 onglets principaux
+  1. 🏠 Accueil (promotions, mises en avant)
+  2. 🔍 Recherche & filtres
+  3. ❤️ Favoris
+  4. 💬 Messagerie
+  5. 👤 Profil utilisateur
+- **Responsive** : Optimisé mobile et compatible web
+- **Animations** : Transitions fluides et feedback visuel immédiat
 
 ## 🛠️ Technologies
 
@@ -75,7 +144,10 @@ Application mobile de réservation de services de beauté pour particuliers, dé
 
 ```bash
 # Cloner le repository
-git clone [URL_DU_REPO]
+git clone https://github.com/marvynclouet/ADM-APP.git
+
+# Naviguer dans le dossier
+cd ADM-APP/BeautyBookingApp
 
 # Installer les dépendances
 npm install
@@ -87,14 +159,57 @@ npx expo start
 npx expo export --platform web
 ```
 
-## 🔧 Configuration
+## 🔧 Configuration & Développement
 
-L'application utilise des données mockées pour la démonstration. Pour une version production, remplacez les données dans `src/constants/mockData.ts` par des appels API réels.
+### État actuel
+L'application utilise des **données mockées** pour la démonstration (MVP/Prototype).
 
-## 📞 Support
+### Pour passer en production
+1. Remplacer les données mock dans `src/constants/mockData.ts` par des appels API
+2. Intégrer un système d'authentification réel (Firebase, Auth0, custom backend)
+3. Connecter à une base de données (PostgreSQL, MongoDB)
+4. Intégrer les passerelles de paiement (Stripe, PayPal)
+5. Configurer les notifications push (Expo Notifications, Firebase)
+6. Implémenter la géolocalisation réelle (Google Maps API)
 
-Pour toute question ou problème, contactez l'équipe de développement.
+### Développement par phases
+```
+Phase 1 (Actuelle) : MVP fonctionnel avec données mock ✅
+Phase 2 : Backend + API + Base de données
+Phase 3 : Système d'urgence + Abonnements Premium
+Phase 4 : Fonctionnalités avancées (associations, marketing)
+Phase 5 : Extensions (web, partenariats)
+```
+
+## 💰 Modèle économique (À implémenter)
+
+### Commissions
+- Commission sur chaque transaction (via l'app)
+- Système hybride : paiement espèces + commission différée
+
+### Abonnements
+- **Client Premium** : Accès urgences illimité, notifications prioritaires
+- **Prestataire Premium** : Visibilité renforcée, accès urgences, outils marketing
+
+### Crédits
+- Crédits ponctuels pour urgences (clients non Premium)
+- Boost de visibilité temporaire (prestataires non Premium)
+
+## 📞 Contact & Support
+
+Pour toute question ou suggestion concernant le développement :
+- **Repository** : https://github.com/marvynclouet/ADM-APP
+- **Issues** : Utilisez l'onglet "Issues" du repository
+
+## 🎯 Vision & Mission
+
+**ADM (Autour de Moi)** a pour mission de :
+- Démocratiser l'accès aux services de beauté
+- Professionnaliser l'activité des prestataires indépendants
+- Créer une communauté de confiance entre clients et prestataires
+- Faciliter la mise en relation rapide et géolocalisée
 
 ---
 
-**ADM Beauty Booking App** - Rendez la beauté accessible à tous ✨ 
+**ADM - Autour de Moi** 💈 ✨ 💅  
+*Trouvez votre prestataire idéal, autour de vous, en quelques clics* 
