@@ -22,6 +22,7 @@ import { SERVICE_PROVIDERS } from '../constants/mockData';
 import { Alert } from 'react-native';
 import MessagesScreen from '../screens/MessagesScreen';
 import ChatScreen from '../screens/ChatScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -143,6 +144,21 @@ const BookingsScreenWrapper: React.FC<any> = ({ navigation }) => {
   return <BookingsScreen navigation={navigation} />;
 };
 
+// Wrapper pour FavoritesScreen avec navigation
+const FavoritesScreenWrapper: React.FC<any> = ({ navigation }) => {
+  const handleNavigateToProvider = (providerId: string) => {
+    const provider = SERVICE_PROVIDERS.find(p => p.id === providerId);
+    if (provider) {
+      navigation.navigate('Search', { 
+        screen: 'ProviderDetail',
+        params: { provider }
+      });
+    }
+  };
+
+  return <FavoritesScreen navigation={navigation} onNavigateToProvider={handleNavigateToProvider} />;
+};
+
 // Stack pour les messages
 const MessagesStack = () => {
   return (
@@ -206,12 +222,12 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="Messages"
-        component={MessagesStack}
+        name="Favorites"
+        component={FavoritesScreenWrapper}
         options={{
-          tabBarLabel: 'Messages',
+          tabBarLabel: 'Favoris',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble" size={size} color={color} />
+            <Ionicons name="heart" size={size} color={color} />
           ),
         }}
       />
@@ -222,6 +238,16 @@ const MainTabs = () => {
           tabBarLabel: 'Réservations',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStack}
+        options={{
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble" size={size} color={color} />
           ),
         }}
       />

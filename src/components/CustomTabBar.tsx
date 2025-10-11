@@ -41,14 +41,16 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
 
         const getIconName = () => {
           switch (route.name) {
-            case 'Home':
+            case 'Accueil':
               return 'home';
             case 'Search':
               return 'search';
-            case 'Messages':
-              return 'chatbubble';
+            case 'Favorites':
+              return 'heart';
             case 'Bookings':
               return 'calendar';
+            case 'Messages':
+              return 'chatbubble';
             case 'Profil':
               return 'person';
             default:
