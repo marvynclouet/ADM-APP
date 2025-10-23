@@ -64,6 +64,7 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
 
   const filteredBookings = bookings.filter(booking => booking.status === selectedTab);
 
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return COLORS.primary;

@@ -118,6 +118,14 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
     }
   };
 
+  const handleEditProfile = () => {
+    Alert.alert('Modifier le profil', 'Fonctionnalité à venir');
+  };
+
+  const handleViewAllReviews = () => {
+    Alert.alert('Tous les avis', 'Voir tous les avis clients');
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Ionicons
@@ -137,7 +145,7 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Ma Boutique</Text>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
             <Ionicons name="pencil" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
@@ -251,7 +259,7 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Avis clients</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleViewAllReviews}>
             <Text style={styles.seeAllText}>Voir tout</Text>
           </TouchableOpacity>
         </View>

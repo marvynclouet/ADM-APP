@@ -90,6 +90,10 @@ const ProviderMessagesScreen: React.FC<ProviderMessagesScreenProps> = ({ navigat
     }
   };
 
+  const handleMenuPress = () => {
+    Alert.alert('Menu', 'Options du menu à venir');
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
@@ -98,7 +102,7 @@ const ProviderMessagesScreen: React.FC<ProviderMessagesScreenProps> = ({ navigat
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Messages</Text>
-          <TouchableOpacity style={styles.menuButton}>
+          <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
             <Ionicons name="ellipsis-vertical" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
