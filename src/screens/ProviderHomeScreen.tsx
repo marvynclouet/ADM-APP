@@ -12,6 +12,7 @@ interface ProviderHomeScreenProps {
   onNavigateToEarnings?: () => void;
   onNavigateToSchedule?: () => void;
   onNavigateToShop?: () => void;
+  onNavigateToReviews?: () => void;
   onLogout?: () => void;
 }
 
@@ -23,6 +24,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
   onNavigateToEarnings,
   onNavigateToSchedule,
   onNavigateToShop,
+  onNavigateToReviews,
   onLogout,
 }) => {
   const [provider] = useState({
@@ -77,6 +79,13 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           onNavigateToShop();
         } else {
           Alert.alert('Boutique', 'Voir ma boutique');
+        }
+        break;
+      case 'reviews':
+        if (onNavigateToReviews) {
+          onNavigateToReviews();
+        } else {
+          Alert.alert('Avis', 'Voir mes avis clients');
         }
         break;
       default:
@@ -214,6 +223,15 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           >
             <Ionicons name="storefront-outline" size={32} color={COLORS.accent} />
             <Text style={styles.quickActionText}>Boutique</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => handleQuickAction('reviews')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="star-outline" size={32} color="#FFD700" />
+            <Text style={styles.quickActionText}>Avis</Text>
           </TouchableOpacity>
         </View>
       </View>

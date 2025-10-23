@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
 import FavoriteButton from './FavoriteButton';
+import StarRating from './StarRating';
 
 interface ProviderCardProps {
   provider: ServiceProvider;
@@ -32,9 +33,14 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
         <Text style={styles.name}>{provider.name}</Text>
         
         <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={16} color={COLORS.accent} />
-          <Text style={styles.rating}>{provider.rating}</Text>
-          <Text style={styles.reviewCount}>({provider.reviewCount})</Text>
+          <StarRating 
+            rating={provider.rating} 
+            size={16} 
+            showNumber 
+            showCount 
+            reviewCount={provider.reviewCount}
+            color={COLORS.accent}
+          />
         </View>
         
         <Text style={styles.services}>

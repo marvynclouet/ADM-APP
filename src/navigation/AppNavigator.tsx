@@ -23,6 +23,7 @@ import { Alert } from 'react-native';
 import MessagesScreen from '../screens/MessagesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
+import ProviderReviewsScreen from '../screens/ProviderReviewsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -108,6 +109,10 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
     navigation.navigate('ProviderShop');
   };
 
+  const handleNavigateToReviews = () => {
+    navigation.navigate('ProviderReviews');
+  };
+
   const handleLogout = () => {
     navigation.reset({
       index: 0,
@@ -124,6 +129,7 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
       onNavigateToEarnings={handleNavigateToEarnings}
       onNavigateToSchedule={handleNavigateToSchedule}
       onNavigateToShop={handleNavigateToShop}
+      onNavigateToReviews={handleNavigateToReviews}
       onLogout={handleLogout}
     />
   );
@@ -271,6 +277,7 @@ const ProviderModeStack = () => {
       <Stack.Screen name="ProviderBookings" component={ProviderBookingsScreen} />
       <Stack.Screen name="ProviderMessages" component={ProviderMessagesScreen} />
       <Stack.Screen name="ProviderShop" component={ProviderShopScreen} />
+      <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
     </Stack.Navigator>
   );
 };

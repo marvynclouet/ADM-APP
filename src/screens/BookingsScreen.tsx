@@ -11,6 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MOCK_BOOKINGS } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
+import RatingModal from '../components/RatingModal';
+import { useReviews } from '../hooks/useReviews';
+import { useToast } from '../hooks/useToast';
 
 interface BookingsScreenProps {
   navigation?: any;
@@ -18,6 +21,10 @@ interface BookingsScreenProps {
 
 const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const { addReview } = useReviews();
+  const { showSuccess } = useToast();
 
   const upcomingBookings = MOCK_BOOKINGS.filter(booking => 
     booking.status === 'confirmed' || booking.status === 'pending'
@@ -96,6 +103,27 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleRateService = (booking: any) => {
+    setSelectedBooking(booking);
+    setRatingModalVisible(true);
+  };
+
+  const handleSubmitRating = async (rating: number, review: string) => {
+    if (selectedBooking) {
+      await addReview({
+        userId: 'current-user',
+        userName: 'Vous',
+        providerId: selectedBooking.provider.id,
+        serviceId: selectedBooking.service.id,
+        serviceName: selectedBooking.service.name,
+        rating,
+        review,
+        isVerified: true,
+      });
+      showSuccess('Merci pour votre avis !');
+    }
+  };
+
   const renderBookingCard = (booking: any) => (
     <View key={booking.id} style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
@@ -135,6 +163,15 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
             onPress={() => handleCancelBooking(booking)}
           >
             <Text style={styles.cancelButtonText}>Annuler</Text>
+          </TouchableOpacity>
+        )}
+        {booking.status === 'completed' && (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.rateButton]}
+            onPress={() => handleRateService(booking)}
+          >
+            <Ionicons name="star" size={16} color="white" style={{ marginRight: 4 }} />
+            <Text style={styles.rateButtonText}>Noter</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -202,6 +239,15 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
           )
         )}
       </ScrollView>
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={ratingModalVisible}
+        onClose={() => setRatingModalVisible(false)}
+        onSubmit={handleSubmitRating}
+        providerName={selectedBooking?.provider?.name || 'Prestataire'}
+        serviceName={selectedBooking?.service?.name || 'Service'}
+      />
     </View>
   );
 };
@@ -317,6 +363,16 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: COLORS.error,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rateButton: {
+    backgroundColor: '#FFD700',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rateButtonText: {
+    color: '#333',
     fontSize: 14,
     fontWeight: '600',
   },
