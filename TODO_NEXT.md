@@ -238,3 +238,5 @@ git commit -m "style: update favorites page design"
 **Objectif fin Semaine 3** : Application avec favoris fonctionnels et système de notation complet ⭐
 
 
+
+

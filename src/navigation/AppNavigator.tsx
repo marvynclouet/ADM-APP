@@ -24,6 +24,10 @@ import MessagesScreen from '../screens/MessagesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProviderReviewsScreen from '../screens/ProviderReviewsScreen';
+import ProviderDashboardScreen from '../screens/ProviderDashboardScreen';
+import ProviderServicesManagementScreen from '../screens/ProviderServicesManagementScreen';
+import ProviderProfileManagementScreen from '../screens/ProviderProfileManagementScreen';
+import ProviderCalendarScreen from '../screens/ProviderCalendarScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -90,19 +94,19 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
   };
 
   const handleNavigateToServices = () => {
-    Alert.alert('Services', 'Gérer mes services - Fonctionnalité à venir');
+    navigation.navigate('ProviderServicesManagement');
   };
 
   const handleNavigateToProfile = () => {
-    Alert.alert('Profil', 'Modifier mon profil - Fonctionnalité à venir');
+    navigation.navigate('ProviderProfileManagement');
   };
 
   const handleNavigateToEarnings = () => {
-    Alert.alert('Revenus', 'Voir mes revenus - Fonctionnalité à venir');
+    navigation.navigate('ProviderDashboard');
   };
 
   const handleNavigateToSchedule = () => {
-    Alert.alert('Planning', 'Gérer mon planning - Fonctionnalité à venir');
+    navigation.navigate('ProviderCalendar');
   };
 
   const handleNavigateToShop = () => {
@@ -278,6 +282,10 @@ const ProviderModeStack = () => {
       <Stack.Screen name="ProviderMessages" component={ProviderMessagesScreen} />
       <Stack.Screen name="ProviderShop" component={ProviderShopScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
+      <Stack.Screen name="ProviderDashboard" component={ProviderDashboardScreen} />
+      <Stack.Screen name="ProviderServicesManagement" component={ProviderServicesManagementScreen} />
+      <Stack.Screen name="ProviderProfileManagement" component={ProviderProfileManagementScreen} />
+      <Stack.Screen name="ProviderCalendar" component={ProviderCalendarScreen} />
     </Stack.Navigator>
   );
 };

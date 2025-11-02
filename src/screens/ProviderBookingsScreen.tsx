@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, TextInput, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
+import NotificationBadge from '../components/NotificationBadge';
+import EmptyState from '../components/EmptyState';
 
 interface ProviderBookingsScreenProps {
   navigation?: any;
@@ -10,6 +12,16 @@ interface ProviderBookingsScreenProps {
 
 const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'pending' | 'completed' | 'cancelled'>('upcoming');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  
+  // Animation pour notifications
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [newBookingsCount] = useState(3);
 
   const bookings = [
     {
@@ -85,6 +97,26 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
     }
   };
 
+  useEffect(() => {
+    if (newBookingsCount > 0 && selectedTab === 'pending') {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
+    }
+  }, [newBookingsCount, selectedTab]);
+
   const handleBookingAction = (booking: any, action: string) => {
     switch (action) {
       case 'accept':
@@ -94,10 +126,14 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
         ]);
         break;
       case 'reject':
-        Alert.alert('Refuser', `Refuser la réservation de ${booking.clientName} ?`, [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Refuser', style: 'destructive', onPress: () => Alert.alert('Succès', 'Réservation refusée') }
-        ]);
+        setSelectedBooking(booking);
+        setShowRejectModal(true);
+        break;
+      case 'edit':
+        setSelectedBooking(booking);
+        setNewDate(booking.date);
+        setNewTime(booking.time);
+        setShowEditModal(true);
         break;
       case 'message':
         Alert.alert('Message', `Envoyer un message à ${booking.clientName}`);
@@ -127,8 +163,11 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mes Réservations</Text>
-          <TouchableOpacity style={styles.menuButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color={COLORS.white} />
+          <TouchableOpacity 
+            style={styles.menuButton}
+            onPress={() => Alert.alert('Export', 'Export PDF des réservations à venir')}
+          >
+            <Ionicons name="download-outline" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -145,7 +184,14 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
           style={[styles.tab, selectedTab === 'pending' && styles.tabActive]}
           onPress={() => setSelectedTab('pending')}
         >
-          <Text style={[styles.tabText, selectedTab === 'pending' && styles.tabTextActive]}>En attente</Text>
+          <View style={styles.tabWithBadge}>
+            <Text style={[styles.tabText, selectedTab === 'pending' && styles.tabTextActive]}>En attente</Text>
+            {newBookingsCount > 0 && (
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <NotificationBadge count={newBookingsCount} size="small" />
+              </Animated.View>
+            )}
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
@@ -164,16 +210,16 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
       {/* Liste des réservations */}
       <ScrollView style={styles.bookingsList} showsVerticalScrollIndicator={false}>
         {filteredBookings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
-            <Text style={styles.emptyStateTitle}>Aucune réservation</Text>
-            <Text style={styles.emptyStateText}>
-              {selectedTab === 'upcoming' ? 'Aucune réservation à venir' :
-               selectedTab === 'pending' ? 'Aucune réservation en attente' :
-               selectedTab === 'completed' ? 'Aucune réservation terminée' :
-               'Aucune réservation annulée'}
-            </Text>
-          </View>
+          <EmptyState
+            icon="calendar-outline"
+            title="Aucune réservation"
+            description={
+              selectedTab === 'upcoming' ? 'Aucune réservation à venir' :
+              selectedTab === 'pending' ? 'Aucune réservation en attente' :
+              selectedTab === 'completed' ? 'Aucune réservation terminée' :
+              'Aucune réservation annulée'
+            }
+          />
         ) : (
           filteredBookings.map((booking) => (
             <View key={booking.id} style={styles.bookingCard}>
@@ -253,11 +299,116 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
                 >
                   <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
                 </TouchableOpacity>
+                {booking.status === 'upcoming' && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleBookingAction(booking, 'edit')}
+                  >
+                    <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))
         )}
       </ScrollView>
+
+      {/* Modal de refus avec raison */}
+      <Modal
+        visible={showRejectModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Refuser la réservation</Text>
+            <Text style={styles.modalSubtitle}>
+              Pourquoi refusez-vous cette réservation ? (optionnel)
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              placeholder="Raison du refus..."
+              multiline
+              numberOfLines={4}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowRejectModal(false);
+                  setRejectReason('');
+                }}
+              >
+                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={() => {
+                  Alert.alert('Succès', 'Réservation refusée' + (rejectReason ? `\nRaison: ${rejectReason}` : ''));
+                  setShowRejectModal(false);
+                  setRejectReason('');
+                }}
+              >
+                <Text style={styles.modalButtonTextConfirm}>Refuser</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal d'édition */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Modifier la réservation</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nouvelle date</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newDate}
+                onChangeText={setNewDate}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nouvelle heure</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newTime}
+                onChangeText={setNewTime}
+                placeholder="HH:MM"
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowEditModal(false);
+                }}
+              >
+                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={() => {
+                  Alert.alert('Succès', 'Réservation modifiée avec succès');
+                  setShowEditModal(false);
+                }}
+              >
+                <Text style={styles.modalButtonTextConfirm}>Enregistrer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -441,6 +592,82 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.error,
     marginLeft: 4,
+  },
+  tabWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  modalInput: {
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: COLORS.textPrimary,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: COLORS.lightGray,
+  },
+  modalButtonConfirm: {
+    backgroundColor: COLORS.primary,
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  modalButtonTextConfirm: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });
 

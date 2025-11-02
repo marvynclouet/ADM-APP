@@ -16,6 +16,10 @@ import CategoryCard from '../components/CategoryCard';
 import ProviderCard from '../components/ProviderCard';
 import ServiceCarousel from '../components/ServiceCarousel';
 import Logo from '../components/Logo';
+import LoadingSpinner from '../components/LoadingSpinner';
+import SkeletonCard from '../components/SkeletonCard';
+import AnimatedCard from '../components/AnimatedCard';
+import EmptyState from '../components/EmptyState';
 import { SERVICE_CATEGORIES, SERVICE_PROVIDERS, SERVICES } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
@@ -40,6 +44,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToBookings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
   const { toggleFavorite, isFavorite } = useFavorites();
 
@@ -58,6 +63,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   // Animation d'entrée
   useEffect(() => {
+    // Simuler le chargement des données
+    const loadData = async () => {
+      setIsLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulation
+      setIsLoading(false);
+    };
+
+    loadData();
+
     const animations = [
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -190,6 +204,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         showInfo('Fonctionnalité à venir');
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement de votre espace..." />
+        <View style={styles.skeletonContainer}>
+          <SkeletonCard height={120} style={styles.skeletonCard} />
+          <SkeletonCard height={200} style={styles.skeletonCard} />
+          <SkeletonCard height={150} style={styles.skeletonCard} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -597,6 +624,17 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginTop: 8,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    paddingTop: 60,
+  },
+  skeletonContainer: {
+    padding: 16,
+  },
+  skeletonCard: {
+    marginBottom: 16,
   },
 });
 

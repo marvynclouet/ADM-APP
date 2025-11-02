@@ -14,6 +14,8 @@ import { COLORS } from '../constants/colors';
 import RatingModal from '../components/RatingModal';
 import { useReviews } from '../hooks/useReviews';
 import { useToast } from '../hooks/useToast';
+import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface BookingsScreenProps {
   navigation?: any;
@@ -211,31 +213,23 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
           upcomingBookings.length > 0 ? (
             upcomingBookings.map(renderBookingCard)
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
-              <Text style={styles.emptyStateTitle}>Aucune réservation à venir</Text>
-              <Text style={styles.emptyStateText}>
-                Vous n'avez pas encore de réservations programmées
-              </Text>
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={handleReserveService}
-              >
-                <Text style={styles.primaryButtonText}>Réserver un service</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="calendar-outline"
+              title="Aucune réservation à venir"
+              description="Vous n'avez pas encore de réservations programmées"
+              actionText="Réserver un service"
+              onAction={handleReserveService}
+            />
           )
         ) : (
           pastBookings.length > 0 ? (
             pastBookings.map(renderBookingCard)
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={64} color={COLORS.textSecondary} />
-              <Text style={styles.emptyStateTitle}>Aucune réservation passée</Text>
-              <Text style={styles.emptyStateText}>
-                Vos réservations terminées apparaîtront ici
-              </Text>
-            </View>
+            <EmptyState
+              icon="time-outline"
+              title="Aucune réservation passée"
+              description="Vos réservations terminées apparaîtront ici"
+            />
           )
         )}
       </ScrollView>

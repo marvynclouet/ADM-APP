@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert,
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
+import FormField from '../components/FormField';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface AuthScreenProps {
   navigation?: any;
@@ -293,6 +295,31 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Bouton Accès Prestataires - Mode Test */}
+        <View style={styles.providerAccessSection}>
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          <TouchableOpacity
+            style={styles.providerAccessButton}
+            onPress={() => {
+              if (navigation) {
+                navigation.navigate('Provider');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="business" size={20} color={COLORS.primary} />
+            <Text style={styles.providerAccessButtonText}>Accès prestataires</Text>
+            <Ionicons name="arrow-forward" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+          <Text style={styles.providerAccessHint}>
+            Accès direct au mode prestataire (Mode test)
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -453,6 +480,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  providerAccessSection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  providerAccessButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  providerAccessButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  providerAccessHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 
