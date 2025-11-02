@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
 import FavoriteButton from './FavoriteButton';
+import PremiumBadge from './PremiumBadge';
+import EmergencyBadge from './EmergencyBadge';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 48) / 2; // 2 colonnes avec marges
@@ -89,9 +91,13 @@ const ServiceCardView: React.FC<ServiceCardViewProps> = ({
             style={styles.providerAvatar}
           />
           <View style={styles.providerDetails}>
-            <Text style={styles.providerName} numberOfLines={1}>
-              {provider.name}
-            </Text>
+            <View style={styles.providerNameRow}>
+              <Text style={styles.providerName} numberOfLines={1}>
+                {provider.name}
+              </Text>
+              {provider.isPremium && <PremiumBadge size="small" />}
+              {provider.acceptsEmergency && <EmergencyBadge size="small" />}
+            </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color={COLORS.warning} />
               <Text style={styles.rating}>{provider.rating}</Text>
@@ -184,11 +190,17 @@ const styles = StyleSheet.create({
   providerDetails: {
     flex: 1,
   },
+  providerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 2,
+  },
   providerName: {
     fontSize: 10,
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginBottom: 1,
   },
   ratingContainer: {
     flexDirection: 'row',

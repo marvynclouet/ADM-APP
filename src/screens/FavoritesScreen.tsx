@@ -30,22 +30,57 @@ const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ navigation, onNavigat
 
   // Filtrer les prestataires favoris
   const favoriteProviders = useMemo(() => {
-    return SERVICE_PROVIDERS.filter(provider => favorites.includes(provider.id));
+    try {
+      if (!favorites || !Array.isArray(favorites)) {
+        return [];
+      }
+      return SERVICE_PROVIDERS.filter(provider => {
+        try {
+          return provider && provider.id && favorites.includes(provider.id);
+        } catch (e) {
+          console.error('Erreur lors du filtrage d\'un prestataire:', e);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement des favoris:', error);
+      return [];
+    }
   }, [favorites]);
 
   // Filtrer par catégorie
   const filteredProviders = useMemo(() => {
-    if (selectedCategory === 'all') {
-      return favoriteProviders;
+    try {
+      if (selectedCategory === 'all') {
+        return favoriteProviders;
+      }
+      return favoriteProviders.filter(provider => {
+        try {
+          if (!provider || !provider.services || provider.services.length === 0) {
+            return false;
+          }
+          // provider.services est maintenant un tableau d'objets Service
+          return provider.services.some(service => {
+            try {
+              if (typeof service === 'object' && service !== null && 'category' in service) {
+                return service.category && service.category.id === selectedCategory;
+              }
+              // Fallback pour les anciennes données
+              return false;
+            } catch (e) {
+              console.error('Erreur lors du filtrage d\'un service:', e);
+              return false;
+            }
+          });
+        } catch (e) {
+          console.error('Erreur lors du filtrage d\'un prestataire par catégorie:', e);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Erreur lors du filtrage par catégorie:', error);
+      return favoriteProviders; // Retourner tous les favoris en cas d'erreur
     }
-    return favoriteProviders.filter(provider =>
-      provider.services.some(serviceId => {
-        const category = SERVICE_CATEGORIES.find(cat =>
-          cat.id === serviceId.split('-')[0]
-        );
-        return category?.id === selectedCategory;
-      })
-    );
   }, [favoriteProviders, selectedCategory]);
 
   const handleProviderPress = (providerId: string) => {
@@ -147,31 +182,52 @@ const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ navigation, onNavigat
             </TouchableOpacity>
 
             {SERVICE_CATEGORIES.map(category => {
-              const count = favoriteProviders.filter(provider =>
-                provider.services.some(serviceId => serviceId.startsWith(category.id))
-              ).length;
+              try {
+                const count = favoriteProviders.filter(provider => {
+                  try {
+                    if (!provider || !provider.services || provider.services.length === 0) {
+                      return false;
+                    }
+                    return provider.services.some(service => {
+                      try {
+                        if (typeof service === 'object' && service !== null && 'category' in service) {
+                          return service.category && service.category.id === category.id;
+                        }
+                        return false;
+                      } catch (e) {
+                        return false;
+                      }
+                    });
+                  } catch (e) {
+                    return false;
+                  }
+                }).length;
 
-              if (count === 0) return null;
+                if (count === 0) return null;
 
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.filterChip,
-                    selectedCategory === category.id && styles.filterChipActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category.id)}
-                >
-                  <Text
+                return (
+                  <TouchableOpacity
+                    key={category.id}
                     style={[
-                      styles.filterChipText,
-                      selectedCategory === category.id && styles.filterChipTextActive,
+                      styles.filterChip,
+                      selectedCategory === category.id && styles.filterChipActive,
                     ]}
+                    onPress={() => setSelectedCategory(category.id)}
                   >
-                    {category.name} ({count})
-                  </Text>
-                </TouchableOpacity>
-              );
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        selectedCategory === category.id && styles.filterChipTextActive,
+                      ]}
+                    >
+                      {category.name} ({count})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              } catch (error) {
+                console.error(`Erreur lors de l'affichage de la catégorie ${category.id}:`, error);
+                return null;
+              }
             })}
           </ScrollView>
 

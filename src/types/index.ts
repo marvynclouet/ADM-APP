@@ -9,17 +9,37 @@ export interface User {
   reviewCount?: number;
 }
 
+export interface Certificate {
+  id: string;
+  name: string;
+  issuingOrganization: string;
+  issueDate: string;
+  image: string; // URL ou URI de l'image/PDF
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  verifiedAt?: string;
+}
+
 export interface ServiceProvider extends User {
   services: Service[];
   location: Location;
   description: string;
   experience: number;
-  certifications: string[];
+  certifications: Certificate[]; // Changé de string[] à Certificate[]
   availability: Availability[];
   priceRange: {
     min: number;
     max: number;
   };
+  isPremium?: boolean; // Statut Premium
+  acceptsEmergency?: boolean; // Accepte les réservations urgentes
+  emergencyCredits?: number; // Crédits disponibles pour urgences (simulation)
+}
+
+export enum ServiceLevel {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced',
+  PRO = 'pro'
 }
 
 export interface Service {
@@ -30,6 +50,7 @@ export interface Service {
   price: number;
   category: ServiceCategory;
   image?: string;
+  level?: ServiceLevel; // Niveau de service
 }
 
 export interface ServiceCategory {

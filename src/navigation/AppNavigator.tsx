@@ -28,6 +28,10 @@ import ProviderDashboardScreen from '../screens/ProviderDashboardScreen';
 import ProviderServicesManagementScreen from '../screens/ProviderServicesManagementScreen';
 import ProviderProfileManagementScreen from '../screens/ProviderProfileManagementScreen';
 import ProviderCalendarScreen from '../screens/ProviderCalendarScreen';
+import ProviderCertificatesScreen from '../screens/ProviderCertificatesScreen';
+import ProviderPremiumScreen from '../screens/ProviderPremiumScreen';
+import ProviderEmergencyScreen from '../screens/ProviderEmergencyScreen';
+import EmergencyBookingScreen from '../screens/EmergencyBookingScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -50,6 +54,14 @@ const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
     } else {
       // Fallback vers la recherche
       navigation.navigate('Search');
+    }
+  };
+
+  const handleNavigateToEmergency = (provider: any) => {
+    if (provider && provider.acceptsEmergency) {
+      navigation.navigate('EmergencyBooking', {
+        provider: provider,
+      });
     }
   };
 
@@ -79,6 +91,7 @@ const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
       onNavigateToService={handleNavigateToService}
       onNavigateToProfile={handleNavigateToProfile}
       onNavigateToBookings={handleNavigateToBookings}
+      onNavigateToEmergency={handleNavigateToEmergency}
     />
   );
 };
@@ -135,6 +148,7 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
       onNavigateToShop={handleNavigateToShop}
       onNavigateToReviews={handleNavigateToReviews}
       onLogout={handleLogout}
+      navigation={navigation}
     />
   );
 };
@@ -186,6 +200,7 @@ const SearchStack = () => {
       <Stack.Screen name="SearchMain" component={SearchScreenWrapper} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Réservation" component={BookingScreen} />
+      <Stack.Screen name="EmergencyBooking" component={EmergencyBookingScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
@@ -268,6 +283,7 @@ const MainStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="EmergencyBooking" component={EmergencyBookingScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
     </Stack.Navigator>
   );
@@ -286,6 +302,9 @@ const ProviderModeStack = () => {
       <Stack.Screen name="ProviderServicesManagement" component={ProviderServicesManagementScreen} />
       <Stack.Screen name="ProviderProfileManagement" component={ProviderProfileManagementScreen} />
       <Stack.Screen name="ProviderCalendar" component={ProviderCalendarScreen} />
+      <Stack.Screen name="ProviderCertificates" component={ProviderCertificatesScreen} />
+      <Stack.Screen name="ProviderPremium" component={ProviderPremiumScreen} />
+      <Stack.Screen name="ProviderEmergency" component={ProviderEmergencyScreen} />
     </Stack.Navigator>
   );
 };

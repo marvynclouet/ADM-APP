@@ -144,21 +144,29 @@ export const SERVICE_PROVIDERS: ServiceProvider[] = [
     isProvider: true,
     rating: 4.8,
     reviewCount: 127,
+    isPremium: true, // Premium
+    acceptsEmergency: true, // Accepte les urgences
+    emergencyCredits: 10,
     location: {
       latitude: 48.8566,
       longitude: 2.3522,
-      address: '15 rue de la Paix, Paris'
+      address: '15 rue de la Paix, Paris',
+      city: 'Paris',
+      postalCode: '75001'
     },
-    services: ['1', '2'],
-    availability: {
-      monday: { start: '09:00', end: '18:00' },
-      tuesday: { start: '09:00', end: '18:00' },
-      wednesday: { start: '09:00', end: '18:00' },
-      thursday: { start: '09:00', end: '18:00' },
-      friday: { start: '09:00', end: '18:00' },
-      saturday: { start: '09:00', end: '16:00' },
-      sunday: { start: null, end: null }
-    }
+    description: 'Coiffeuse professionnelle avec 10 ans d\'expérience',
+    experience: 10,
+    certifications: [],
+    services: SERVICES.filter(s => ['1', '2'].includes(s.id)),
+    priceRange: { min: 25, max: 80 },
+    availability: [
+      { dayOfWeek: 1, startTime: '09:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 2, startTime: '09:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 3, startTime: '09:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 4, startTime: '09:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 5, startTime: '09:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 6, startTime: '09:00', endTime: '16:00', isAvailable: true },
+    ]
   },
   {
     id: '2',
@@ -169,21 +177,28 @@ export const SERVICE_PROVIDERS: ServiceProvider[] = [
     isProvider: true,
     rating: 4.9,
     reviewCount: 89,
+    isPremium: true, // Premium
+    acceptsEmergency: false,
     location: {
       latitude: 48.8606,
       longitude: 2.3376,
-      address: '8 avenue des Champs-Élysées, Paris'
+      address: '8 avenue des Champs-Élysées, Paris',
+      city: 'Paris',
+      postalCode: '75008'
     },
-    services: ['3', '9'],
-    availability: {
-      monday: { start: '10:00', end: '19:00' },
-      tuesday: { start: '10:00', end: '19:00' },
-      wednesday: { start: '10:00', end: '19:00' },
-      thursday: { start: '10:00', end: '19:00' },
-      friday: { start: '10:00', end: '19:00' },
-      saturday: { start: '10:00', end: '17:00' },
-      sunday: { start: null, end: null }
-    }
+    description: 'Spécialiste en manucure et pédicure',
+    experience: 5,
+    certifications: [],
+    services: SERVICES.filter(s => ['3', '9'].includes(s.id)),
+    priceRange: { min: 25, max: 50 },
+    availability: [
+      { dayOfWeek: 1, startTime: '10:00', endTime: '19:00', isAvailable: true },
+      { dayOfWeek: 2, startTime: '10:00', endTime: '19:00', isAvailable: true },
+      { dayOfWeek: 3, startTime: '10:00', endTime: '19:00', isAvailable: true },
+      { dayOfWeek: 4, startTime: '10:00', endTime: '19:00', isAvailable: true },
+      { dayOfWeek: 5, startTime: '10:00', endTime: '19:00', isAvailable: true },
+      { dayOfWeek: 6, startTime: '10:00', endTime: '17:00', isAvailable: true },
+    ]
   },
   {
     id: '3',
@@ -194,21 +209,29 @@ export const SERVICE_PROVIDERS: ServiceProvider[] = [
     isProvider: true,
     rating: 4.7,
     reviewCount: 156,
+    acceptsEmergency: true, // Accepte les urgences mais pas Premium
+    emergencyCredits: 5,
     location: {
       latitude: 48.8706,
       longitude: 2.3236,
-      address: '22 rue du Faubourg Saint-Honoré, Paris'
+      address: '22 rue du Faubourg Saint-Honoré, Paris',
+      city: 'Paris',
+      postalCode: '75008'
     },
-    services: ['4', '8'],
-    availability: {
-      monday: { start: '11:00', end: '20:00' },
-      tuesday: { start: '11:00', end: '20:00' },
-      wednesday: { start: '11:00', end: '20:00' },
-      thursday: { start: '11:00', end: '20:00' },
-      friday: { start: '11:00', end: '20:00' },
-      saturday: { start: '11:00', end: '18:00' },
-      sunday: { start: '12:00', end: '16:00' }
-    }
+    description: 'Maquilleuse professionnelle',
+    experience: 7,
+    certifications: [],
+    services: SERVICES.filter(s => ['4', '8'].includes(s.id)),
+    priceRange: { min: 40, max: 90 },
+    availability: [
+      { dayOfWeek: 1, startTime: '11:00', endTime: '20:00', isAvailable: true },
+      { dayOfWeek: 2, startTime: '11:00', endTime: '20:00', isAvailable: true },
+      { dayOfWeek: 3, startTime: '11:00', endTime: '20:00', isAvailable: true },
+      { dayOfWeek: 4, startTime: '11:00', endTime: '20:00', isAvailable: true },
+      { dayOfWeek: 5, startTime: '11:00', endTime: '20:00', isAvailable: true },
+      { dayOfWeek: 6, startTime: '11:00', endTime: '18:00', isAvailable: true },
+      { dayOfWeek: 0, startTime: '12:00', endTime: '16:00', isAvailable: true },
+    ]
   },
   {
     id: '4',
@@ -222,18 +245,23 @@ export const SERVICE_PROVIDERS: ServiceProvider[] = [
     location: {
       latitude: 48.8506,
       longitude: 2.3666,
-      address: '5 boulevard Haussmann, Paris'
+      address: '5 boulevard Haussmann, Paris',
+      city: 'Paris',
+      postalCode: '75009'
     },
-    services: ['5', '10'],
-    availability: {
-      monday: { start: '08:00', end: '17:00' },
-      tuesday: { start: '08:00', end: '17:00' },
-      wednesday: { start: '08:00', end: '17:00' },
-      thursday: { start: '08:00', end: '17:00' },
-      friday: { start: '08:00', end: '17:00' },
-      saturday: { start: '08:00', end: '15:00' },
-      sunday: { start: null, end: null }
-    }
+    description: 'Masseuse thérapeutique',
+    experience: 12,
+    certifications: [],
+    services: SERVICES.filter(s => ['5', '10'].includes(s.id)),
+    priceRange: { min: 60, max: 90 },
+    availability: [
+      { dayOfWeek: 1, startTime: '08:00', endTime: '17:00', isAvailable: true },
+      { dayOfWeek: 2, startTime: '08:00', endTime: '17:00', isAvailable: true },
+      { dayOfWeek: 3, startTime: '08:00', endTime: '17:00', isAvailable: true },
+      { dayOfWeek: 4, startTime: '08:00', endTime: '17:00', isAvailable: true },
+      { dayOfWeek: 5, startTime: '08:00', endTime: '17:00', isAvailable: true },
+      { dayOfWeek: 6, startTime: '08:00', endTime: '15:00', isAvailable: true },
+    ]
   },
   {
     id: '5',
@@ -247,18 +275,23 @@ export const SERVICE_PROVIDERS: ServiceProvider[] = [
     location: {
       latitude: 48.8406,
       longitude: 2.3522,
-      address: '12 rue de Rivoli, Paris'
+      address: '12 rue de Rivoli, Paris',
+      city: 'Paris',
+      postalCode: '75004'
     },
-    services: ['6', '7'],
-    availability: {
-      monday: { start: '09:30', end: '18:30' },
-      tuesday: { start: '09:30', end: '18:30' },
-      wednesday: { start: '09:30', end: '18:30' },
-      thursday: { start: '09:30', end: '18:30' },
-      friday: { start: '09:30', end: '18:30' },
-      saturday: { start: '09:30', end: '16:30' },
-      sunday: { start: null, end: null }
-    }
+    description: 'Esthéticienne et épilatrice',
+    experience: 4,
+    certifications: [],
+    services: SERVICES.filter(s => ['6', '7'].includes(s.id)),
+    priceRange: { min: 30, max: 55 },
+    availability: [
+      { dayOfWeek: 1, startTime: '09:30', endTime: '18:30', isAvailable: true },
+      { dayOfWeek: 2, startTime: '09:30', endTime: '18:30', isAvailable: true },
+      { dayOfWeek: 3, startTime: '09:30', endTime: '18:30', isAvailable: true },
+      { dayOfWeek: 4, startTime: '09:30', endTime: '18:30', isAvailable: true },
+      { dayOfWeek: 5, startTime: '09:30', endTime: '18:30', isAvailable: true },
+      { dayOfWeek: 6, startTime: '09:30', endTime: '16:30', isAvailable: true },
+    ]
   }
 ];
 

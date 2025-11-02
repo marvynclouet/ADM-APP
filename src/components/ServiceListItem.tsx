@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
 import FavoriteButton from './FavoriteButton';
+import PremiumBadge from './PremiumBadge';
+import EmergencyBadge from './EmergencyBadge';
 
 interface ServiceListItemProps {
   service: Service;
@@ -89,7 +91,11 @@ const ServiceListItem: React.FC<ServiceListItemProps> = ({
             style={styles.providerAvatar}
           />
           <View style={styles.providerDetails}>
-            <Text style={styles.providerName}>{provider.name}</Text>
+            <View style={styles.providerNameRow}>
+              <Text style={styles.providerName}>{provider.name}</Text>
+              {provider.isPremium && <PremiumBadge size="small" />}
+              {provider.acceptsEmergency && <EmergencyBadge size="small" />}
+            </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={14} color={COLORS.warning} />
               <Text style={styles.rating}>{provider.rating}</Text>
@@ -191,11 +197,17 @@ const styles = StyleSheet.create({
   providerDetails: {
     flex: 1,
   },
+  providerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
   providerName: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginBottom: 2,
   },
   ratingContainer: {
     flexDirection: 'row',

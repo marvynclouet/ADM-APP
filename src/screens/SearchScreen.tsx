@@ -39,7 +39,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   // Combiner les services avec leurs prestataires et distances
   const servicesWithProviders = useMemo(() => {
     return SERVICES.map(service => {
-      const provider = SERVICE_PROVIDERS.find(p => p.services.includes(service.id));
+      const provider = SERVICE_PROVIDERS.find(p => p.services.some(s => s.id === service.id));
       const distance = SERVICE_DISTANCES[service.id as keyof typeof SERVICE_DISTANCES] || 0;
       return {
         service,

@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants/colors';
 import EmptyState from '../components/EmptyState';
+import { ServiceLevel } from '../types';
+import LevelBadge from '../components/LevelBadge';
 
 interface Service {
   id: string;
@@ -26,6 +28,7 @@ interface Service {
   category: string;
   image?: string;
   isActive: boolean;
+  level?: ServiceLevel;
 }
 
 interface ProviderServicesManagementScreenProps {
@@ -68,9 +71,16 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
     category: 'Coiffure',
     image: '',
     isActive: true,
+    level: ServiceLevel.INTERMEDIATE,
   });
 
   const categories = ['Coiffure', 'Beauté', 'Massage', 'Soins', 'Autre'];
+  const levels = [
+    { value: ServiceLevel.BEGINNER, label: 'Débutant' },
+    { value: ServiceLevel.INTERMEDIATE, label: 'Intermédiaire' },
+    { value: ServiceLevel.ADVANCED, label: 'Avancé' },
+    { value: ServiceLevel.PRO, label: 'Pro' },
+  ];
 
   const handleAddService = () => {
     setEditingService(null);
@@ -96,6 +106,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       category: service.category,
       image: service.image || '',
       isActive: service.isActive,
+      level: service.level || ServiceLevel.INTERMEDIATE,
     });
     setIsModalVisible(true);
   };
@@ -145,6 +156,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       category: formData.category,
       image: formData.image,
       isActive: formData.isActive,
+      level: formData.level,
     };
 
     if (editingService) {
@@ -206,7 +218,10 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
                     trackColor={{ false: COLORS.lightGray, true: COLORS.primary }}
                   />
                 </View>
-                <Text style={styles.serviceCategory}>{service.category}</Text>
+                <View style={styles.serviceMeta}>
+                  <Text style={styles.serviceCategory}>{service.category}</Text>
+                  {service.level && <LevelBadge level={service.level} size="small" />}
+                </View>
                 <Text style={styles.serviceDescription} numberOfLines={2}>
                   {service.description}
                 </Text>
@@ -339,6 +354,23 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
                 keyboardType="numeric"
               />
 
+              {/* Niveau */}
+              <Text style={styles.inputLabel}>Niveau de service *</Text>
+              <View style={styles.levelSelector}>
+                {levels.map(level => (
+                  <TouchableOpacity
+                    key={level.value}
+                    style={[
+                      styles.levelButton,
+                      formData.level === level.value && styles.levelButtonActive,
+                    ]}
+                    onPress={() => setFormData({ ...formData, level: level.value })}
+                  >
+                    <LevelBadge level={level.value} size="small" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               {/* Statut */}
               <View style={styles.switchContainer}>
                 <Text style={styles.inputLabel}>Service actif</Text>
@@ -435,10 +467,15 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     flex: 1,
   },
+  serviceMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   serviceCategory: {
     fontSize: 14,
     color: COLORS.primary,
-    marginBottom: 8,
   },
   serviceDescription: {
     fontSize: 14,
@@ -573,6 +610,22 @@ const styles = StyleSheet.create({
   },
   categoryButtonTextActive: {
     color: COLORS.white,
+  },
+  levelSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  levelButton: {
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.lightGray,
+  },
+  levelButtonActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '10',
   },
   switchContainer: {
     flexDirection: 'row',

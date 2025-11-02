@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ServiceProvider, Service } from '../types';
 import { SERVICES } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
+import { useReviews } from '../hooks/useReviews';
+import ReviewCard from '../components/ReviewCard';
+import StarRating from '../components/StarRating';
 
 interface ProviderDetailScreenProps {
   route?: {
@@ -28,25 +31,71 @@ const ProviderDetailScreen: React.FC<ProviderDetailScreenProps> = ({
   navigation,
 }) => {
   const [selectedTab, setSelectedTab] = useState<'services' | 'reviews' | 'info'>('services');
+  const { getReviewsByProvider, getAverageRating, getRatingStats } = useReviews();
 
   // Récupérer le prestataire depuis les paramètres de navigation ou utiliser un fallback
   const provider = route?.params?.provider || {
     id: '1',
     name: 'Marie Dubois',
+    email: 'marie.dubois@email.com',
+    phone: '06 12 34 56 78',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-    phone: '+33 1 23 45 67 89',
-    email: 'marie.dubois@example.com',
+    isProvider: true,
     rating: 4.8,
     reviewCount: 127,
-    services: ['1', '2'],
-    location: { latitude: 48.8566, longitude: 2.3522, address: '15 rue de la Paix, Paris' },
-    availability: { monday: { start: '09:00', end: '18:00' } }
+    services: [],
+    location: { 
+      latitude: 48.8566, 
+      longitude: 2.3522, 
+      address: '15 rue de la Paix, Paris',
+      city: 'Paris',
+      postalCode: '75001'
+    },
+    description: 'Coiffeuse professionnelle',
+    experience: 10,
+    certifications: [],
+    availability: [],
+    priceRange: { min: 25, max: 80 }
   };
 
-  // Récupérer les services du prestataire
-  const providerServices = SERVICES.filter(service => 
-    provider.services.includes(service.id)
-  );
+  // Récupérer les services du prestataire (maintenant provider.services est un tableau d'objets Service)
+  const providerServices = useMemo(() => {
+    if (provider.services && provider.services.length > 0) {
+      // Si provider.services est un tableau d'objets Service, les utiliser directement
+      if (typeof provider.services[0] === 'object' && 'id' in provider.services[0]) {
+        return provider.services as Service[];
+      }
+      // Sinon, si c'est un tableau d'IDs, filtrer depuis SERVICES
+      return SERVICES.filter(service => 
+        (provider.services as any[]).includes(service.id)
+      );
+    }
+    return [];
+  }, [provider.services]);
+
+  // Récupérer les avis du prestataire
+  const reviews = useMemo(() => {
+    return getReviewsByProvider(provider.id);
+  }, [provider.id]);
+
+  // Statistiques des avis
+  const reviewStats = useMemo(() => {
+    const providerReviews = reviews;
+    if (providerReviews.length === 0) {
+      return {
+        total: 0,
+        average: 0,
+        breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+      };
+    }
+    const average = getAverageRating(provider.id);
+    const breakdown = getRatingStats(provider.id);
+    return {
+      total: providerReviews.length,
+      average,
+      breakdown
+    };
+  }, [reviews, provider.id, getAverageRating, getRatingStats]);
 
   const formatRating = (rating: number) => {
     return rating.toFixed(1);
@@ -136,6 +185,25 @@ const ProviderDetailScreen: React.FC<ProviderDetailScreenProps> = ({
         </View>
       </View>
 
+      {/* Bouton Urgence si disponible */}
+      {provider.acceptsEmergency && (
+        <View style={styles.emergencyButtonContainer}>
+          <TouchableOpacity
+            style={styles.emergencyButtonHeader}
+            onPress={() => {
+              if (navigation) {
+                navigation.navigate('EmergencyBooking', {
+                  provider: provider,
+                });
+              }
+            }}
+          >
+            <Ionicons name="flash" size={24} color={COLORS.white} />
+            <Text style={styles.emergencyButtonHeaderText}>Réserver en urgence</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -181,10 +249,72 @@ const ProviderDetailScreen: React.FC<ProviderDetailScreenProps> = ({
         {selectedTab === 'reviews' && (
           <View style={styles.reviewsSection}>
             <Text style={styles.sectionTitle}>Avis clients</Text>
-            <View style={styles.noReviews}>
-              <Ionicons name="chatbubble-outline" size={48} color={COLORS.textSecondary} />
-              <Text style={styles.noReviewsText}>Aucun avis pour le moment</Text>
-            </View>
+            
+            {/* Statistiques des avis */}
+            {reviewStats.total > 0 && (
+              <View style={styles.reviewStatsContainer}>
+                <View style={styles.reviewStatsMain}>
+                  <Text style={styles.reviewStatsRating}>
+                    {reviewStats.average.toFixed(1)}
+                  </Text>
+                  <StarRating 
+                    rating={reviewStats.average} 
+                    size={20} 
+                    color={COLORS.warning}
+                  />
+                  <Text style={styles.reviewStatsCount}>
+                    {reviewStats.total} avis
+                  </Text>
+                </View>
+                <View style={styles.reviewStatsBreakdown}>
+                  {[5, 4, 3, 2, 1].map((stars) => {
+                    const count = reviewStats.breakdown[stars] || 0;
+                    const percentage = reviewStats.total > 0 ? (count / reviewStats.total) * 100 : 0;
+                    return (
+                      <View key={stars} style={styles.reviewStatsRow}>
+                        <Text style={styles.reviewStatsStars}>{stars} ⭐</Text>
+                        <View style={styles.reviewStatsBar}>
+                          <View 
+                            style={[
+                              styles.reviewStatsBarFill, 
+                              { width: `${percentage}%` }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.reviewStatsCount}>{count}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+            
+            {/* Liste des avis */}
+            {reviews.length === 0 ? (
+              <View style={styles.noReviews}>
+                <Ionicons name="chatbubble-outline" size={48} color={COLORS.textSecondary} />
+                <Text style={styles.noReviewsText}>Aucun avis pour le moment</Text>
+              </View>
+            ) : (
+              <View style={styles.reviewsList}>
+                {reviews.map(review => (
+                  <ReviewCard
+                    key={review.id}
+                    review={{
+                      id: review.id,
+                      userName: review.userName,
+                      userAvatar: review.userAvatar,
+                      rating: review.rating,
+                      review: review.review,
+                      date: review.date,
+                      serviceName: review.serviceName,
+                      isVerified: review.isVerified,
+                    }}
+                    showService={true}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -300,6 +430,26 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 4,
   },
+  emergencyButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+  },
+  emergencyButtonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.error,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emergencyButtonHeaderText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
   tabsContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
@@ -388,6 +538,56 @@ const styles = StyleSheet.create({
   },
   reviewsSection: {
     flex: 1,
+  },
+  reviewStatsContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+  },
+  reviewStatsMain: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reviewStatsRating: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  reviewStatsCount: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 8,
+  },
+  reviewStatsBreakdown: {
+    gap: 8,
+  },
+  reviewStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reviewStatsStars: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    width: 40,
+  },
+  reviewStatsBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  reviewStatsBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.warning,
+    borderRadius: 4,
+  },
+  reviewsList: {
+    gap: 12,
   },
   noReviews: {
     alignItems: 'center',

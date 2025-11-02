@@ -33,6 +33,7 @@ interface HomeScreenProps {
   onNavigateToService?: (serviceId: string) => void;
   onNavigateToProfile?: () => void;
   onNavigateToBookings?: () => void;
+  onNavigateToEmergency?: (provider: any) => void;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -42,6 +43,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToService,
   onNavigateToProfile,
   onNavigateToBookings,
+  onNavigateToEmergency,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -398,6 +400,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                   showInfo('Retiré des favoris');
                 } else {
                   showSuccess('Ajouté aux favoris ❤️');
+                }
+              }}
+              onEmergencyPress={() => {
+                if (onNavigateToEmergency) {
+                  onNavigateToEmergency(provider);
                 }
               }}
             />

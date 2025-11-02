@@ -5,6 +5,8 @@ import { ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
 import FavoriteButton from './FavoriteButton';
 import StarRating from './StarRating';
+import PremiumBadge from './PremiumBadge';
+import EmergencyBadge from './EmergencyBadge';
 
 interface ProviderCardProps {
   provider: ServiceProvider;
@@ -12,6 +14,7 @@ interface ProviderCardProps {
   showFavoriteButton?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onEmergencyPress?: () => void;
 }
 
 const ProviderCard: React.FC<ProviderCardProps> = ({ 
@@ -20,9 +23,16 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
   showFavoriteButton = true,
   isFavorite = false,
   onToggleFavorite,
+  onEmergencyPress,
 }) => {
+  const isPremium = provider.isPremium || false;
+  const acceptsEmergency = provider.acceptsEmergency || false;
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.container}
+      onPress={onPress}
+    >
       <Image 
         source={{ uri: provider.avatar }} 
         style={styles.avatar}
@@ -30,7 +40,13 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
       />
       
       <View style={styles.info}>
-        <Text style={styles.name}>{provider.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>
+            {provider.name}
+          </Text>
+          {isPremium && <PremiumBadge size="small" />}
+          {acceptsEmergency && <EmergencyBadge size="small" />}
+        </View>
         
         <View style={styles.ratingContainer}>
           <StarRating 
@@ -44,7 +60,10 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
         </View>
         
         <Text style={styles.services}>
-          {provider.services.length} service{provider.services.length > 1 ? 's' : ''} disponible{provider.services.length > 1 ? 's' : ''}
+          {(() => {
+            const servicesCount = provider.services && Array.isArray(provider.services) ? provider.services.length : 0;
+            return `${servicesCount} service${servicesCount > 1 ? 's' : ''} disponible${servicesCount > 1 ? 's' : ''}`;
+          })()}
         </Text>
         
         <View style={styles.locationContainer}>
@@ -56,6 +75,22 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
           <Ionicons name="time" size={14} color={COLORS.textSecondary} />
           <Text style={styles.availability}>Disponible aujourd'hui</Text>
         </View>
+
+        {/* Bouton Urgence si disponible */}
+        {acceptsEmergency && (
+          <TouchableOpacity
+            style={styles.emergencyButton}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              if (onEmergencyPress) {
+                onEmergencyPress();
+              }
+            }}
+          >
+            <Ionicons name="flash" size={16} color={COLORS.white} />
+            <Text style={styles.emergencyButtonText}>Réserver en urgence</Text>
+          </TouchableOpacity>
+        )}
       </View>
       
       <View style={styles.actions}>
@@ -89,6 +124,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
   },
   avatar: {
     width: 60,
@@ -156,6 +203,22 @@ const styles = StyleSheet.create({
   },
   arrow: {
     marginLeft: 4,
+  },
+  emergencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  emergencyButtonText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

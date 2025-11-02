@@ -14,6 +14,7 @@ interface ProviderHomeScreenProps {
   onNavigateToShop?: () => void;
   onNavigateToReviews?: () => void;
   onLogout?: () => void;
+  navigation?: any;
 }
 
 const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
@@ -26,6 +27,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
   onNavigateToShop,
   onNavigateToReviews,
   onLogout,
+  navigation,
 }) => {
   const [provider] = useState({
     name: 'Sophie Martin',
@@ -88,30 +90,30 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           Alert.alert('Avis', 'Voir mes avis clients');
         }
         break;
+      case 'certificates':
+        if (navigation) {
+          navigation.navigate('ProviderCertificates');
+        } else {
+          Alert.alert('Diplômes', 'Gérer mes diplômes');
+        }
+        break;
+      case 'premium':
+        if (navigation) {
+          navigation.navigate('ProviderPremium');
+        } else {
+          Alert.alert('Premium', 'Gérer mon abonnement Premium');
+        }
+        break;
+      case 'emergency':
+        if (navigation) {
+          navigation.navigate('ProviderEmergency');
+        } else {
+          Alert.alert('Urgence', 'Gérer le mode urgence');
+        }
+        break;
       default:
         Alert.alert('Action', 'Fonctionnalité à venir');
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Voulez-vous vraiment vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Déconnexion', 
-          style: 'destructive',
-          onPress: () => {
-            if (onLogout) {
-              onLogout();
-            } else {
-              Alert.alert('Déconnexion', 'Fonctionnalité de déconnexion à venir');
-            }
-          }
-        }
-      ]
-    );
   };
 
   const todayBookings = [
@@ -135,17 +137,23 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
               <Text style={styles.providerName}>{provider.name}</Text>
               <View style={styles.ratingContainer}>
                 <Ionicons name="star" size={14} color={COLORS.warning} />
-                <Text style={styles.ratingText}>{provider.rating} ({provider.totalBookings} avis)</Text>
+                <Text style={styles.ratingText}>{provider.rating}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.white} />
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.logoutButton}
-            onPress={handleLogout}
+            style={styles.messageHeaderButton}
+            onPress={() => handleQuickAction('messages')}
+            activeOpacity={0.8}
           >
-            <Ionicons name="log-out" size={20} color={COLORS.white} />
-            <Text style={styles.logoutText}>Déconnexion</Text>
+            <Ionicons name="chatbubble-outline" size={24} color={COLORS.white} />
+            {provider.unreadMessages > 0 && (
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>
+                  {provider.unreadMessages > 99 ? '99+' : provider.unreadMessages}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -184,22 +192,6 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           
           <TouchableOpacity 
             style={styles.quickActionCard}
-            onPress={() => handleQuickAction('messages')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.messageBadge}>
-              <Ionicons name="chatbubble-outline" size={32} color={COLORS.accent} />
-              {provider.unreadMessages > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{provider.unreadMessages}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.quickActionText}>Messages</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickActionCard}
             onPress={() => handleQuickAction('services')}
             activeOpacity={0.8}
           >
@@ -232,6 +224,33 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           >
             <Ionicons name="star-outline" size={32} color="#FFD700" />
             <Text style={styles.quickActionText}>Avis</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => handleQuickAction('certificates')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="school-outline" size={32} color={COLORS.primary} />
+            <Text style={styles.quickActionText}>Diplômes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => handleQuickAction('premium')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="diamond-outline" size={32} color="#FFD700" />
+            <Text style={styles.quickActionText}>Premium</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => handleQuickAction('emergency')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="flash-outline" size={32} color={COLORS.error} />
+            <Text style={styles.quickActionText}>Urgence</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -336,19 +355,28 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 4,
   },
-  logoutButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+  messageHeaderButton: {
+    padding: 8,
+    position: 'relative',
   },
-  logoutText: {
+  headerBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  headerBadgeText: {
     color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   statsSection: {
     flexDirection: 'row',
@@ -419,25 +447,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginTop: 8,
     textAlign: 'center',
-  },
-  messageBadge: {
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: COLORS.error,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: COLORS.white,
   },
   bookingCard: {
     backgroundColor: COLORS.white,

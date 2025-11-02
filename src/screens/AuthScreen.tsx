@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import FormField from '../components/FormField';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Logo from '../components/Logo';
 
 interface AuthScreenProps {
   navigation?: any;
@@ -20,6 +21,47 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Animations pour le logo de chargement
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (isProcessing) {
+      // Démarrer l'animation de rotation
+      const rotateAnimation = Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        })
+      );
+      
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        rotateAnimation,
+      ]).start();
+      
+      return () => {
+        rotateAnimation.stop();
+      };
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isProcessing]);
+  
+  const rotate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const isFormValid = () => {
     // Validation simple : au moins un caractère dans email et mot de passe
@@ -43,32 +85,37 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     
     setIsProcessing(true);
 
-    // Navigation directe sans alert pour tester
-    if (navigation) {
-      console.log('Attempting to navigate...');
-      try {
-        // Naviguer vers le bon mode selon le type d'utilisateur
-        if (userType === 'provider') {
-          console.log('Navigating to Provider mode');
-          navigation.navigate('Provider');
-        } else {
-          console.log('Navigating to Client mode');
-          navigation.navigate('Main');
-        }
-        console.log('Navigation successful');
-      } catch (error) {
-        console.log('Navigation error:', error);
-        Alert.alert('Erreur', 'Erreur de navigation: ' + error);
-      }
-    } else {
-      console.log('Navigation object is null or undefined');
-      Alert.alert('Erreur', 'Navigation non disponible');
-    }
-
-    // Reset processing state after a delay
+    // Délai pour afficher l'animation de chargement
     setTimeout(() => {
-      setIsProcessing(false);
-    }, 2000);
+      // Navigation directe sans alert pour tester
+      if (navigation) {
+        console.log('Attempting to navigate...');
+        try {
+          // Naviguer vers le bon mode selon le type d'utilisateur
+          if (userType === 'provider') {
+            console.log('Navigating to Provider mode');
+            navigation.navigate('Provider');
+          } else {
+            console.log('Navigating to Client mode');
+            navigation.navigate('Main');
+          }
+          console.log('Navigation successful');
+        } catch (error) {
+          console.log('Navigation error:', error);
+          Alert.alert('Erreur', 'Erreur de navigation: ' + error);
+          setIsProcessing(false);
+        }
+      } else {
+        console.log('Navigation object is null or undefined');
+        Alert.alert('Erreur', 'Navigation non disponible');
+        setIsProcessing(false);
+      }
+      
+      // Reset processing state après la navigation
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 500);
+    }, 1500);
   };
 
   const handleForgotPassword = () => {
@@ -321,6 +368,34 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           </Text>
         </View>
       </View>
+      
+      {/* Overlay de chargement avec logo qui tourne */}
+      {isProcessing && (
+        <Animated.View 
+          style={[
+            styles.loadingOverlay,
+            {
+              opacity: fadeAnim,
+            }
+          ]}
+        >
+          <LinearGradient
+            colors={[COLORS.gradientStart + 'EE', COLORS.gradientEnd + 'EE']}
+            style={styles.loadingGradient}
+          >
+            <Animated.View
+              style={[
+                styles.loadingLogoContainer,
+                {
+                  transform: [{ rotate }],
+                },
+              ]}
+            >
+              <Logo size="large" showText={false} />
+            </Animated.View>
+          </LinearGradient>
+        </Animated.View>
+      )}
     </ScrollView>
   );
 };
@@ -528,6 +603,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingGradient: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingLogoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
