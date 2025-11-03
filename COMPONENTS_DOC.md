@@ -324,3 +324,4 @@ Utilitaires d'accessibilité.
 - `getAccessibleColor(baseColor, backgroundColor, fallback)`: string
 - `createAccessibleStyles(baseStyles)`: StyleSheet
 
+

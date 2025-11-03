@@ -36,3 +36,4 @@ export const useAccessibility = () => {
   return settings;
 };
 
+

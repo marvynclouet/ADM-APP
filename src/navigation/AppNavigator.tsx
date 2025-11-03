@@ -32,6 +32,7 @@ import ProviderCertificatesScreen from '../screens/ProviderCertificatesScreen';
 import ProviderPremiumScreen from '../screens/ProviderPremiumScreen';
 import ProviderEmergencyScreen from '../screens/ProviderEmergencyScreen';
 import EmergencyBookingScreen from '../screens/EmergencyBookingScreen';
+import SelectProviderScreen from '../screens/SelectProviderScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -188,6 +189,7 @@ const MessagesStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MessagesList" component={MessagesScreenWrapper} />
+      <Stack.Screen name="SelectProvider" component={SelectProviderScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
@@ -285,6 +287,8 @@ const MainStack = () => {
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="EmergencyBooking" component={EmergencyBookingScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+      <Stack.Screen name="SelectProvider" component={SelectProviderScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 };

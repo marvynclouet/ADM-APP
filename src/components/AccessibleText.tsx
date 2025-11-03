@@ -50,3 +50,4 @@ const AccessibleText: React.FC<AccessibleTextProps> = ({
 
 export default AccessibleText;
 
+

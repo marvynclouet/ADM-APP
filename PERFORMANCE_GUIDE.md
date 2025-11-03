@@ -183,3 +183,4 @@ const MyComponent = () => {
 - [ ] Optimisation des animations
 - [ ] Réduction de la taille du bundle
 
+

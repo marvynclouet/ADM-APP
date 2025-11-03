@@ -90,7 +90,11 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ navigation }) => {
   };
 
   const handleNewMessage = () => {
-    Alert.alert('Nouveau message', 'Fonctionnalité à venir');
+    if (navigation) {
+      navigation.navigate('SelectProvider');
+    } else {
+      Alert.alert('Nouveau message', 'Fonctionnalité à venir');
+    }
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => (

@@ -185,11 +185,28 @@ const ProviderDetailScreen: React.FC<ProviderDetailScreenProps> = ({
         </View>
       </View>
 
-      {/* Bouton Urgence si disponible */}
-      {provider.acceptsEmergency && (
-        <View style={styles.emergencyButtonContainer}>
+      {/* Actions rapides */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={styles.messageButton}
+          onPress={() => {
+            if (navigation) {
+              navigation.navigate('Chat', {
+                conversationId: `conv_${provider.id}`,
+                providerId: provider.id,
+                providerName: provider.name,
+                providerAvatar: provider.avatar,
+              });
+            }
+          }}
+        >
+          <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.messageButtonText}>Envoyer un message</Text>
+        </TouchableOpacity>
+        
+        {provider.acceptsEmergency && (
           <TouchableOpacity
-            style={styles.emergencyButtonHeader}
+            style={styles.emergencyButton}
             onPress={() => {
               if (navigation) {
                 navigation.navigate('EmergencyBooking', {
@@ -198,11 +215,11 @@ const ProviderDetailScreen: React.FC<ProviderDetailScreenProps> = ({
               }
             }}
           >
-            <Ionicons name="flash" size={24} color={COLORS.white} />
-            <Text style={styles.emergencyButtonHeaderText}>Réserver en urgence</Text>
+            <Ionicons name="flash" size={20} color={COLORS.white} />
+            <Text style={styles.emergencyButtonText}>Réserver en urgence</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -430,12 +447,33 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 4,
   },
-  emergencyButtonContainer: {
+  actionsContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: COLORS.white,
+    gap: 12,
   },
-  emergencyButtonHeader: {
+  messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  messageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  emergencyButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -445,7 +483,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  emergencyButtonHeaderText: {
+  emergencyButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.white,

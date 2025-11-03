@@ -147,12 +147,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
+    <View style={styles.wrapper}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+      >
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.logoContainer}>
           <Image 
@@ -376,6 +378,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
             styles.loadingOverlay,
             {
               opacity: fadeAnim,
+              pointerEvents: 'auto' as const,
             }
           ]}
         >
@@ -396,18 +399,24 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           </LinearGradient>
         </Animated.View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40, // Add padding to ensure the button is accessible
+    paddingBottom: 40,
+    minHeight: '100%',
   },
   header: {
     paddingTop: 60,
@@ -439,8 +448,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   content: {
-    flex: 1,
     padding: 20,
+    minHeight: 600,
   },
   userTypeSection: {
     marginBottom: 24,
