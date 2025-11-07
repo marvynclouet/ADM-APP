@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import CategoryCard from '../components/CategoryCard';
 import ProviderCard from '../components/ProviderCard';
 import ServiceCarousel from '../components/ServiceCarousel';
 import Logo from '../components/Logo';
@@ -20,7 +19,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import SkeletonCard from '../components/SkeletonCard';
 import AnimatedCard from '../components/AnimatedCard';
 import EmptyState from '../components/EmptyState';
-import { SERVICE_CATEGORIES, SERVICE_PROVIDERS, SERVICES } from '../constants/mockData';
+import { SERVICE_PROVIDERS } from '../constants/mockData';
 import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
@@ -29,7 +28,6 @@ import { useFavorites } from '../hooks/useFavorites';
 interface HomeScreenProps {
   onNavigateToSearch?: () => void;
   onNavigateToProvider?: (providerId: string) => void;
-  onNavigateToCategory?: (categoryId: string) => void;
   onNavigateToService?: (serviceId: string) => void;
   onNavigateToProfile?: () => void;
   onNavigateToBookings?: () => void;
@@ -39,7 +37,6 @@ interface HomeScreenProps {
 const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToSearch,
   onNavigateToProvider,
-  onNavigateToCategory,
   onNavigateToService,
   onNavigateToProfile,
   onNavigateToBookings,
@@ -128,15 +125,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
-  const handleCategoryPress = (categoryId: string) => {
-    console.log('Category pressed:', categoryId);
-    if (onNavigateToCategory) {
-      onNavigateToCategory(categoryId);
-    } else {
-      Alert.alert('Catégorie', `Navigation vers la catégorie ${categoryId}`);
-    }
-  };
-
   const handleProviderPress = (providerId: string) => {
     console.log('Provider pressed:', providerId);
     if (onNavigateToProvider) {
@@ -186,25 +174,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const handleServiceCarouselPress = (serviceId: string) => {
     handleServicePress(serviceId);
-  };
-
-  const handleQuickAccessPress = (type: string) => {
-    switch (type) {
-      case 'favorites':
-        showInfo('Vos favoris seront bientôt disponibles !');
-        break;
-      case 'recent':
-        showInfo('Vos services récents seront bientôt disponibles !');
-        break;
-      case 'nearby':
-        showInfo('Recherche de prestataires à proximité...');
-        break;
-      case 'promotions':
-        showInfo('Promotions et offres spéciales à venir !');
-        break;
-      default:
-        showInfo('Fonctionnalité à venir');
-    }
   };
 
   if (isLoading) {
@@ -319,38 +288,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         />
       </Animated.View>
 
-      {/* Catégories - CLIQUABLES */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Catégories</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContainer}
-        >
-          {SERVICE_CATEGORIES.map((category, index) => (
-            <Animated.View
-              key={category.id}
-              style={{
-                opacity: fadeAnim,
-                transform: [
-                  {
-                    translateX: fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [50 * (index + 1), 0],
-                    }),
-                  },
-                ],
-              }}
-            >
-              <CategoryCard
-                category={category}
-                onPress={() => handleCategoryPress(category.id)}
-              />
-            </Animated.View>
-          ))}
-        </ScrollView>
-      </View>
-
       {/* Prestataires populaires - CLIQUABLES avec animation */}
       <Animated.View
         style={[
@@ -438,38 +375,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Section rapide - CLIQUABLE */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Accès rapide</Text>
-        <View style={styles.quickAccessContainer}>
-          <TouchableOpacity 
-            style={styles.quickAccessCard}
-            onPress={() => handleQuickAccessPress('bookings')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="calendar" size={24} color={COLORS.primary} />
-            <Text style={styles.quickAccessText}>Mes réservations</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickAccessCard}
-            onPress={() => handleQuickAccessPress('map')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="map" size={24} color={COLORS.primary} />
-            <Text style={styles.quickAccessText}>Carte</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickAccessCard}
-            onPress={() => handleQuickAccessPress('favorites')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="heart" size={24} color={COLORS.primary} />
-            <Text style={styles.quickAccessText}>Favoris</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </ScrollView>
   );
 };
@@ -571,9 +476,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
-  categoriesContainer: {
-    paddingVertical: 8,
-  },
   providersSection: {
     marginTop: 20,
   },
@@ -616,21 +518,6 @@ const styles = StyleSheet.create({
   },
   promotionArrow: {
     marginLeft: 5,
-  },
-  quickAccessContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  quickAccessCard: {
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  quickAccessText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginTop: 8,
-    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
