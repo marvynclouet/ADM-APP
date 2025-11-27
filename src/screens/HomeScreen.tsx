@@ -9,10 +9,12 @@ import {
   Image,
   Alert,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProviderCard from '../components/ProviderCard';
+import ProviderCardPlanity from '../components/ProviderCardPlanity';
 import ServiceCarousel from '../components/ServiceCarousel';
 import Logo from '../components/Logo';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -198,7 +200,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onHide={hideToast}
       />
       
-      {/* Header avec gradient inspiré du logo ADM */}
+      {/* Header inspiré de Planity - Simple et épuré */}
       <Animated.View
         style={[
           styles.headerContainer,
@@ -208,47 +210,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           },
         ]}
       >
-        <LinearGradient
-          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            {/* Message de bienvenue avec avatar - CLIQUABLE */}
+        <View style={styles.header}>
+          {/* Header top - Logo centré, profil à droite */}
+          <View style={styles.headerTop}>
+            <View style={styles.headerSpacer} />
+            <Text style={styles.headerTitle}>ADM</Text>
             <TouchableOpacity 
-              style={styles.welcomeContainer}
               onPress={handleUserProfilePress}
-              activeOpacity={0.8}
+              style={styles.profileButton}
             >
               <Image
                 source={{ uri: user.avatar }}
-                style={styles.userAvatar}
+                style={styles.profileAvatar}
               />
-              <View style={styles.welcomeText}>
-                <Text style={styles.welcomeTitle}>Bienvenue !</Text>
-                <Text style={styles.userName}>{user.name}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.white} style={styles.welcomeArrow} />
             </TouchableOpacity>
-            
-            {/* Logo ADM centré dans un rond - CLIQUABLE avec animation de pulsation */}
-            <Animated.View
-              style={[
-                styles.logoContainer,
-                {
-                  transform: [{ scale: pulseAnim }],
-                },
-              ]}
-            >
-              <TouchableOpacity 
-                onPress={() => Alert.alert('ADM', 'Logo ADM - Accueil')}
-                activeOpacity={0.8}
-              >
-                <Logo size="medium" showText={false} />
-              </TouchableOpacity>
-            </Animated.View>
           </View>
 
-          {/* Barre de recherche - CLIQUABLE */}
+          {/* Message de bienvenue inspiré de Planity */}
+          <View style={styles.welcomeBanner}>
+            <Text style={styles.welcomeText}>
+              Prenez du temps pour vous chez les meilleurs professionnels de la beauté à proximité
+            </Text>
+          </View>
+
+          {/* Barre de recherche inspirée de Planity */}
           <TouchableOpacity 
             style={styles.searchContainer}
             onPress={handleSearchPress}
@@ -256,13 +241,36 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           >
             <View style={styles.searchInputContainer}>
               <Ionicons name="search" size={20} color={COLORS.textSecondary} />
-              <Text style={styles.searchPlaceholder}>
-                Rechercher une prestation...
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
+              <View style={styles.searchTextContainer}>
+                <Text style={styles.searchMainText}>
+                  {searchQuery || 'Coiffeur - Paris'}
+                </Text>
+                <Text style={styles.searchSubText}>À tout moment</Text>
+              </View>
+              <TouchableOpacity onPress={handleSearchPress}>
+                <Ionicons name="create-outline" size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
-        </LinearGradient>
+
+          {/* Filtres en pills (inspiré de Planity) */}
+          <View style={styles.filtersPillsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersPills}>
+              <TouchableOpacity style={styles.filterPill}>
+                <Ionicons name="diamond-outline" size={16} color={COLORS.textPrimary} />
+                <Text style={styles.filterPillText}>Prestations</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.filterPill}>
+                <Ionicons name="map-outline" size={16} color={COLORS.textPrimary} />
+                <Text style={styles.filterPillText}>Carte</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.filterPill}>
+                <Ionicons name="filter-outline" size={16} color={COLORS.textPrimary} />
+                <Text style={styles.filterPillText}>Filtres</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
       </Animated.View>
 
       {/* Carousel des services - CLIQUABLE avec animation */}
@@ -306,7 +314,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         ]}
       >
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Prestataires populaires</Text>
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Sélectionnez un prestataire</Text>
+            <Text style={styles.sectionSubtitle}>
+              Les meilleurs prestataires aux alentours : Réservation en ligne
+            </Text>
+          </View>
           <TouchableOpacity onPress={handleSeeAllProviders} activeOpacity={0.7}>
             <Text style={styles.seeAllText}>Voir tout</Text>
           </TouchableOpacity>
@@ -319,15 +332,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               opacity: providersAnim,
               transform: [
                 {
-                  translateX: providersAnim.interpolate({
+                  translateY: providersAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [100 * (index + 1), 0],
+                    outputRange: [50 * (index + 1), 0],
                   }),
                 },
               ],
             }}
           >
-            <ProviderCard
+            <ProviderCardPlanity
               provider={provider}
               onPress={() => handleProviderPress(provider.id)}
               isFavorite={isFavorite(provider.id)}
@@ -388,69 +401,94 @@ const styles = StyleSheet.create({
     // Styles pour le conteneur du header animé
   },
   header: {
+    backgroundColor: COLORS.white,
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 16,
     paddingHorizontal: 16,
-    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
-  welcomeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
+  headerSpacer: {
+    width: 32,
   },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    letterSpacing: 1,
+  },
+  profileButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  profileAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  welcomeBanner: {
+    marginBottom: 20,
+    paddingVertical: 16,
   },
   welcomeText: {
-    flex: 1,
-  },
-  welcomeTitle: {
-    fontSize: 14,
-    color: COLORS.white,
-    marginBottom: 2,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  welcomeArrow: {
-    marginLeft: 5,
-  },
-  logoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    lineHeight: 26,
   },
   searchContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    marginBottom: 12,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  searchPlaceholder: {
+  searchTextContainer: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
+  },
+  searchMainText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  searchSubText: {
+    fontSize: 12,
     color: COLORS.textSecondary,
+  },
+  filtersPillsContainer: {
+    marginTop: 8,
+  },
+  filtersPills: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+    marginRight: 8,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
   },
   carouselContainer: {
     marginTop: 20,
@@ -465,11 +503,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  sectionTitleContainer: {
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   seeAllText: {
     fontSize: 14,

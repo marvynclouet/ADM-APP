@@ -22,14 +22,21 @@ import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useFavorites } from '../hooks/useFavorites';
 import ProviderCard from '../components/ProviderCard';
+import ProviderCardPlanity from '../components/ProviderCardPlanity';
 
 interface SearchScreenProps {
   navigation?: any;
+  onNavigateToProfile?: () => void;
+  onNavigateToEmergency?: (provider: any) => void;
 }
 
 type ViewState = 'categories' | 'subcategories' | 'results';
 
-const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
+const SearchScreen: React.FC<SearchScreenProps> = ({ 
+  navigation,
+  onNavigateToProfile,
+  onNavigateToEmergency,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
@@ -52,6 +59,26 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
       };
     });
   }, []);
+
+  // Grouper les prestataires uniques pour la vue Planity
+  const uniqueProviders = useMemo(() => {
+    const providerMap = new Map();
+    filteredServices.forEach(item => {
+      if (!providerMap.has(item.provider.id)) {
+        providerMap.set(item.provider.id, {
+          provider: item.provider,
+          services: [item.service],
+          distance: item.distance
+        });
+      } else {
+        const existing = providerMap.get(item.provider.id);
+        if (!existing.services.find((s: Service) => s.id === item.service.id)) {
+          existing.services.push(item.service);
+        }
+      }
+    });
+    return Array.from(providerMap.values());
+  }, [filteredServices]);
 
   // Filtrer et trier les services
   const filteredServices = useMemo(() => {
@@ -205,19 +232,26 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
         onHide={hideToast}
       />
 
-      {/* Header avec gradient */}
-      <LinearGradient
-        colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-        style={styles.header}
-      >
-        <Text style={styles.headerTitle}>Rechercher</Text>
+      {/* Header inspiré de Planity - Simple et épuré */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation?.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>ADM</Text>
+          <TouchableOpacity onPress={() => onNavigateToProfile?.()}>
+            <View style={styles.profileButton}>
+              <Ionicons name="person-outline" size={20} color={COLORS.textPrimary} />
+            </View>
+          </TouchableOpacity>
+        </View>
         
-        {/* Barre de recherche */}
+        {/* Barre de recherche inspirée de Planity */}
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color={COLORS.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un service ou prestataire..."
+            placeholder="Nom du salon, prestations (coupe...)"
             placeholderTextColor={COLORS.textSecondary}
             value={searchQuery}
             onChangeText={(text) => {
@@ -236,12 +270,37 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Bouton carte */}
-        <TouchableOpacity style={styles.mapButton} onPress={toggleMapView}>
-          <Ionicons name="map" size={20} color={COLORS.white} />
-          <Text style={styles.mapButtonText}>Voir carte</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+        {/* Filtres en pills (inspiré de Planity) */}
+        <View style={styles.filtersPillsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersPills}>
+            <TouchableOpacity
+              style={[styles.filterPill, viewState === 'results' && styles.filterPillActive]}
+              onPress={() => setViewState('results')}
+            >
+              <Ionicons name="diamond-outline" size={16} color={viewState === 'results' ? COLORS.white : COLORS.textPrimary} />
+              <Text style={[styles.filterPillText, viewState === 'results' && styles.filterPillTextActive]}>
+                Prestations
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterPill, showMap && styles.filterPillActive]}
+              onPress={toggleMapView}
+            >
+              <Ionicons name="map-outline" size={16} color={showMap ? COLORS.white : COLORS.textPrimary} />
+              <Text style={[styles.filterPillText, showMap && styles.filterPillTextActive]}>
+                Carte
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.filterPill}
+              onPress={() => showInfo('Filtres avancés à venir')}
+            >
+              <Ionicons name="filter-outline" size={16} color={COLORS.textPrimary} />
+              <Text style={styles.filterPillText}>Filtres</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
 
       <View style={styles.content}>
         {/* Breadcrumb navigation */}
@@ -349,53 +408,28 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsTitle}>
                 {selectedSubcategory 
-                  ? `Prestataires - ${availableSubcategories.find(s => s.id === selectedSubcategory)?.name}`
+                  ? `Sélectionnez un prestataire - ${availableSubcategories.find(s => s.id === selectedSubcategory)?.name}`
                   : searchQuery 
                     ? 'Résultats de recherche'
-                    : 'Services disponibles'}
+                    : 'Sélectionnez un prestataire'}
               </Text>
+              {selectedSubcategory && (
+                <Text style={styles.resultsSubtitle}>
+                  Les meilleurs prestataires aux alentours : Réservation en ligne
+                </Text>
+              )}
               <View style={styles.resultsControls}>
                 <Text style={styles.resultsCount}>
-                  {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''}
+                  {uniqueProviders.length} prestataire{uniqueProviders.length > 1 ? 's' : ''}
                 </Text>
-                
-                {/* Toggle vue liste/carte */}
-                <View style={styles.viewToggle}>
-                  <TouchableOpacity
-                    style={[
-                      styles.viewButton,
-                      viewMode === 'list' && styles.viewButtonActive
-                    ]}
-                    onPress={() => setViewMode('list')}
-                  >
-                    <Ionicons 
-                      name="list" 
-                      size={16} 
-                      color={viewMode === 'list' ? COLORS.white : COLORS.textSecondary} 
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.viewButton,
-                      viewMode === 'grid' && styles.viewButtonActive
-                    ]}
-                    onPress={() => setViewMode('grid')}
-                  >
-                    <Ionicons 
-                      name="grid" 
-                      size={16} 
-                      color={viewMode === 'grid' ? COLORS.white : COLORS.textSecondary} 
-                    />
-                  </TouchableOpacity>
-                </View>
               </View>
             </View>
 
-            {filteredServices.length === 0 ? (
+            {uniqueProviders.length === 0 ? (
               <View style={styles.noResults}>
                 <Ionicons name="search" size={48} color={COLORS.textSecondary} />
                 <Text style={styles.noResultsText}>
-                  Aucun service trouvé
+                  Aucun prestataire trouvé
                 </Text>
                 <Text style={styles.noResultsSubtext}>
                   {searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Essayez de modifier vos filtres'}
@@ -403,51 +437,32 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
               </View>
             ) : (
               <FlatList
-                key={viewMode} // Clé unique pour forcer le re-render
-                data={filteredServices}
-                keyExtractor={(item) => item.service.id}
-                renderItem={({ item }) => 
-                  viewMode === 'list' ? (
-                    <ServiceListItem
-                      service={item.service}
-                      provider={item.provider}
-                      distance={item.distance}
-                      onPress={() => handleServicePress(item.service.id)}
-                      isFavorite={isFavorite(item.provider.id)}
-                      onToggleFavorite={async () => {
-                        await toggleFavorite(item.provider.id);
-                        if (isFavorite(item.provider.id)) {
-                          showInfo('Retiré des favoris');
-                        } else {
-                          showSuccess('Ajouté aux favoris ❤️');
-                        }
-                      }}
-                    />
-                  ) : (
-                    <ServiceCardView
-                      service={item.service}
-                      provider={item.provider}
-                      distance={item.distance}
-                      onPress={() => handleServicePress(item.service.id)}
-                      isFavorite={isFavorite(item.provider.id)}
-                      onToggleFavorite={async () => {
-                        await toggleFavorite(item.provider.id);
-                        if (isFavorite(item.provider.id)) {
-                          showInfo('Retiré des favoris');
-                        } else {
-                          showSuccess('Ajouté aux favoris ❤️');
-                        }
-                      }}
-                    />
-                  )
-                }
+                data={uniqueProviders}
+                keyExtractor={(item) => item.provider.id}
+                renderItem={({ item }) => (
+                  <ProviderCardPlanity
+                    provider={item.provider}
+                    onPress={() => {
+                      setSelectedProvider(item.provider);
+                    }}
+                    isFavorite={isFavorite(item.provider.id)}
+                    onToggleFavorite={async () => {
+                      await toggleFavorite(item.provider.id);
+                      if (isFavorite(item.provider.id)) {
+                        showInfo('Retiré des favoris');
+                      } else {
+                        showSuccess('Ajouté aux favoris ❤️');
+                      }
+                    }}
+                    onEmergencyPress={() => {
+                      if (onNavigateToEmergency) {
+                        onNavigateToEmergency(item.provider);
+                      }
+                    }}
+                  />
+                )}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.servicesList,
-                  viewMode === 'grid' && styles.gridContainer
-                ]}
-                numColumns={viewMode === 'grid' ? 2 : 1}
-                columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
+                contentContainerStyle={styles.providersList}
               />
             )}
           </View>
@@ -463,24 +478,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 20,
+    backgroundColor: COLORS.white,
+    paddingTop: 50,
+    paddingBottom: 12,
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.white,
-    marginBottom: 16,
+    color: COLORS.textPrimary,
+    letterSpacing: 1,
+  },
+  profileButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.lightGray,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.lightGray,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    marginBottom: 12,
   },
   searchInput: {
     flex: 1,
@@ -488,22 +520,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textPrimary,
   },
-  mapButton: {
+  filtersPillsContainer: {
+    marginTop: 8,
+  },
+  filtersPills: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    alignSelf: 'flex-start',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+    marginRight: 8,
   },
-  mapButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
+  filterPillActive: {
+    backgroundColor: COLORS.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
+    color: COLORS.textPrimary,
+  },
+  filterPillTextActive: {
+    color: COLORS.white,
   },
   content: {
     flex: 1,
@@ -699,6 +742,15 @@ const styles = StyleSheet.create({
   },
   servicesList: {
     paddingBottom: 20,
+  },
+  providersList: {
+    paddingBottom: 20,
+  },
+  resultsSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    marginBottom: 12,
   },
   gridContainer: {
     // This style is for the grid view to ensure proper spacing
