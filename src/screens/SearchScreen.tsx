@@ -27,10 +27,13 @@ interface SearchScreenProps {
   navigation?: any;
 }
 
+type ViewState = 'categories' | 'subcategories' | 'results';
+
 const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>('categories');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [showMap, setShowMap] = useState(false);
@@ -117,30 +120,33 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const handleCategoryPress = (categoryId: string) => {
     const category = SERVICE_CATEGORIES.find(c => c.id === categoryId);
     if (category) {
-      if (selectedCategory === category.id) {
-        // Désélectionner la catégorie et la sous-catégorie
-        setSelectedCategory(null);
-        setSelectedSubcategory(null);
-      } else {
-        // Sélectionner la catégorie et réinitialiser la sous-catégorie
-        setSelectedCategory(category.id);
-        setSelectedSubcategory(null);
-      }
+      setSelectedCategory(category.id);
+      setSelectedSubcategory(null);
+      setViewState('subcategories'); // Passer à la vue sous-catégories
     }
   };
 
   const handleSubcategoryPress = (subcategoryId: string) => {
-    if (selectedSubcategory === subcategoryId) {
-      setSelectedSubcategory(null);
-    } else {
-      setSelectedSubcategory(subcategoryId);
-    }
+    setSelectedSubcategory(subcategoryId);
+    setViewState('results'); // Passer à la vue résultats (prestataires/services)
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+    setViewState('categories');
+  };
+
+  const handleBackToSubcategories = () => {
+    setSelectedSubcategory(null);
+    setViewState('subcategories');
   };
 
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory(null);
     setSelectedSubcategory(null);
+    setViewState('categories');
   };
 
   // Obtenir les sous-catégories de la catégorie sélectionnée
@@ -214,7 +220,14 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
             placeholder="Rechercher un service ou prestataire..."
             placeholderTextColor={COLORS.textSecondary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              if (text) {
+                setViewState('results');
+              } else if (!selectedCategory) {
+                setViewState('categories');
+              }
+            }}
           />
           {(searchQuery || selectedCategory || selectedSubcategory) && (
             <TouchableOpacity onPress={clearFilters}>
@@ -231,172 +244,214 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
       </LinearGradient>
 
       <View style={styles.content}>
-        {/* Filtres par catégorie */}
-        <View style={styles.filtersSection}>
-          <Text style={styles.sectionTitle}>Filtrer par catégorie</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContainer}
-          >
-            {SERVICE_CATEGORIES.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryChip,
-                  selectedCategory === category.id && styles.categoryChipActive
-                ]}
-                onPress={() => handleCategoryPress(category.id)}
-              >
-                <Ionicons 
-                  name={category.icon as any} 
-                  size={16} 
-                  color={selectedCategory === category.id ? COLORS.white : COLORS.primary} 
-                />
-                <Text style={[
-                  styles.categoryChipText,
-                  selectedCategory === category.id && styles.categoryChipTextActive
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Filtres par sous-catégorie (si une catégorie est sélectionnée) */}
-        {selectedCategory && availableSubcategories.length > 0 && (
-          <View style={styles.filtersSection}>
-            <Text style={styles.sectionTitle}>Sous-catégories</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesContainer}
+        {/* Breadcrumb navigation */}
+        {(viewState !== 'categories' || selectedCategory) && (
+          <View style={styles.breadcrumb}>
+            <TouchableOpacity 
+              style={styles.breadcrumbItem}
+              onPress={viewState === 'subcategories' ? handleBackToCategories : handleBackToSubcategories}
             >
-              {availableSubcategories.map((subcategory) => (
-                <TouchableOpacity
-                  key={subcategory.id}
-                  style={[
-                    styles.subcategoryChip,
-                    selectedSubcategory === subcategory.id && styles.subcategoryChipActive
-                  ]}
-                  onPress={() => handleSubcategoryPress(subcategory.id)}
-                >
-                  <Text style={[
-                    styles.subcategoryChipText,
-                    selectedSubcategory === subcategory.id && styles.subcategoryChipTextActive
-                  ]}>
-                    {subcategory.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              <Ionicons name="arrow-back" size={16} color={COLORS.primary} />
+              <Text style={styles.breadcrumbText}>
+                {viewState === 'subcategories' ? 'Catégories' : 'Sous-catégories'}
+              </Text>
+            </TouchableOpacity>
+            {selectedCategory && (
+              <Text style={styles.breadcrumbSeparator}>›</Text>
+            )}
+            {selectedCategory && (
+              <Text style={styles.breadcrumbCurrent}>
+                {SERVICE_CATEGORIES.find(c => c.id === selectedCategory)?.name}
+              </Text>
+            )}
+            {selectedSubcategory && (
+              <>
+                <Text style={styles.breadcrumbSeparator}>›</Text>
+                <Text style={styles.breadcrumbCurrent}>
+                  {availableSubcategories.find(s => s.id === selectedSubcategory)?.name}
+                </Text>
+              </>
+            )}
           </View>
         )}
 
-        {/* Résultats */}
-        <View style={styles.resultsSection}>
-          <View style={styles.resultsHeader}>
-            <Text style={styles.resultsTitle}>
-              {searchQuery || selectedCategory || selectedSubcategory ? 'Résultats' : 'Services disponibles'}
+        {/* Vue Catégories */}
+        {viewState === 'categories' && (
+          <View style={styles.listView}>
+            <Text style={styles.sectionTitle}>Choisissez une catégorie</Text>
+            <FlatList
+              data={SERVICE_CATEGORIES}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.categoryListItem}
+                  onPress={() => handleCategoryPress(item.id)}
+                >
+                  <View style={[styles.categoryIconContainer, { backgroundColor: item.color + '20' }]}>
+                    <Ionicons 
+                      name={item.icon as any} 
+                      size={32} 
+                      color={item.color} 
+                    />
+                  </View>
+                  <View style={styles.categoryListItemContent}>
+                    <Text style={styles.categoryListItemTitle}>{item.name}</Text>
+                    <Text style={styles.categoryListItemSubtitle}>
+                      {item.subcategories?.length || 0} sous-catégories
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        )}
+
+        {/* Vue Sous-catégories */}
+        {viewState === 'subcategories' && selectedCategory && (
+          <View style={styles.listView}>
+            <Text style={styles.sectionTitle}>
+              Sous-catégories - {SERVICE_CATEGORIES.find(c => c.id === selectedCategory)?.name}
             </Text>
-            <View style={styles.resultsControls}>
-              <Text style={styles.resultsCount}>
-                {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''}
+            <FlatList
+              data={availableSubcategories}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.subcategoryListItem}
+                  onPress={() => handleSubcategoryPress(item.id)}
+                >
+                  <View style={[styles.subcategoryIconContainer, { backgroundColor: COLORS.primary + '15' }]}>
+                    <Ionicons 
+                      name="ellipse" 
+                      size={16} 
+                      color={COLORS.primary} 
+                    />
+                  </View>
+                  <View style={styles.subcategoryListItemContent}>
+                    <Text style={styles.subcategoryListItemTitle}>{item.name}</Text>
+                    <Text style={styles.subcategoryListItemSubtitle}>
+                      {filteredServices.filter(s => s.service.subcategory?.id === item.id).length} prestataires
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        )}
+
+        {/* Résultats - Prestataires/Services */}
+        {(viewState === 'results' || searchQuery) && (
+          <View style={styles.resultsSection}>
+            <View style={styles.resultsHeader}>
+              <Text style={styles.resultsTitle}>
+                {selectedSubcategory 
+                  ? `Prestataires - ${availableSubcategories.find(s => s.id === selectedSubcategory)?.name}`
+                  : searchQuery 
+                    ? 'Résultats de recherche'
+                    : 'Services disponibles'}
               </Text>
-              
-              {/* Toggle vue liste/carte */}
-              <View style={styles.viewToggle}>
-                <TouchableOpacity
-                  style={[
-                    styles.viewButton,
-                    viewMode === 'list' && styles.viewButtonActive
-                  ]}
-                  onPress={() => setViewMode('list')}
-                >
-                  <Ionicons 
-                    name="list" 
-                    size={16} 
-                    color={viewMode === 'list' ? COLORS.white : COLORS.textSecondary} 
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.viewButton,
-                    viewMode === 'grid' && styles.viewButtonActive
-                  ]}
-                  onPress={() => setViewMode('grid')}
-                >
-                  <Ionicons 
-                    name="grid" 
-                    size={16} 
-                    color={viewMode === 'grid' ? COLORS.white : COLORS.textSecondary} 
-                  />
-                </TouchableOpacity>
+              <View style={styles.resultsControls}>
+                <Text style={styles.resultsCount}>
+                  {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''}
+                </Text>
+                
+                {/* Toggle vue liste/carte */}
+                <View style={styles.viewToggle}>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      viewMode === 'list' && styles.viewButtonActive
+                    ]}
+                    onPress={() => setViewMode('list')}
+                  >
+                    <Ionicons 
+                      name="list" 
+                      size={16} 
+                      color={viewMode === 'list' ? COLORS.white : COLORS.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      viewMode === 'grid' && styles.viewButtonActive
+                    ]}
+                    onPress={() => setViewMode('grid')}
+                  >
+                    <Ionicons 
+                      name="grid" 
+                      size={16} 
+                      color={viewMode === 'grid' ? COLORS.white : COLORS.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
 
-          {filteredServices.length === 0 ? (
-            <View style={styles.noResults}>
-              <Ionicons name="search" size={48} color={COLORS.textSecondary} />
-              <Text style={styles.noResultsText}>
-                Aucun service trouvé
-              </Text>
-              <Text style={styles.noResultsSubtext}>
-                {searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Essayez de modifier vos filtres'}
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              key={viewMode} // Clé unique pour forcer le re-render
-              data={filteredServices}
-              keyExtractor={(item) => item.service.id}
-              renderItem={({ item }) => 
-                viewMode === 'list' ? (
-                  <ServiceListItem
-                    service={item.service}
-                    provider={item.provider}
-                    distance={item.distance}
-                    onPress={() => handleServicePress(item.service.id)}
-                    isFavorite={isFavorite(item.provider.id)}
-                    onToggleFavorite={async () => {
-                      await toggleFavorite(item.provider.id);
-                      if (isFavorite(item.provider.id)) {
-                        showInfo('Retiré des favoris');
-                      } else {
-                        showSuccess('Ajouté aux favoris ❤️');
-                      }
-                    }}
-                  />
-                ) : (
-                  <ServiceCardView
-                    service={item.service}
-                    provider={item.provider}
-                    distance={item.distance}
-                    onPress={() => handleServicePress(item.service.id)}
-                    isFavorite={isFavorite(item.provider.id)}
-                    onToggleFavorite={async () => {
-                      await toggleFavorite(item.provider.id);
-                      if (isFavorite(item.provider.id)) {
-                        showInfo('Retiré des favoris');
-                      } else {
-                        showSuccess('Ajouté aux favoris ❤️');
-                      }
-                    }}
-                  />
-                )
-              }
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.servicesList,
-                viewMode === 'grid' && styles.gridContainer
-              ]}
-              numColumns={viewMode === 'grid' ? 2 : 1}
-              columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
-            />
-          )}
-        </View>
+            {filteredServices.length === 0 ? (
+              <View style={styles.noResults}>
+                <Ionicons name="search" size={48} color={COLORS.textSecondary} />
+                <Text style={styles.noResultsText}>
+                  Aucun service trouvé
+                </Text>
+                <Text style={styles.noResultsSubtext}>
+                  {searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Essayez de modifier vos filtres'}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                key={viewMode} // Clé unique pour forcer le re-render
+                data={filteredServices}
+                keyExtractor={(item) => item.service.id}
+                renderItem={({ item }) => 
+                  viewMode === 'list' ? (
+                    <ServiceListItem
+                      service={item.service}
+                      provider={item.provider}
+                      distance={item.distance}
+                      onPress={() => handleServicePress(item.service.id)}
+                      isFavorite={isFavorite(item.provider.id)}
+                      onToggleFavorite={async () => {
+                        await toggleFavorite(item.provider.id);
+                        if (isFavorite(item.provider.id)) {
+                          showInfo('Retiré des favoris');
+                        } else {
+                          showSuccess('Ajouté aux favoris ❤️');
+                        }
+                      }}
+                    />
+                  ) : (
+                    <ServiceCardView
+                      service={item.service}
+                      provider={item.provider}
+                      distance={item.distance}
+                      onPress={() => handleServicePress(item.service.id)}
+                      isFavorite={isFavorite(item.provider.id)}
+                      onToggleFavorite={async () => {
+                        await toggleFavorite(item.provider.id);
+                        if (isFavorite(item.provider.id)) {
+                          showInfo('Retiré des favoris');
+                        } else {
+                          showSuccess('Ajouté aux favoris ❤️');
+                        }
+                      }}
+                    />
+                  )
+                }
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.servicesList,
+                  viewMode === 'grid' && styles.gridContainer
+                ]}
+                numColumns={viewMode === 'grid' ? 2 : 1}
+                columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
+              />
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -510,6 +565,104 @@ const styles = StyleSheet.create({
   },
   subcategoryChipTextActive: {
     color: COLORS.white,
+  },
+  breadcrumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.white,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  breadcrumbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  breadcrumbText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  breadcrumbSeparator: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginHorizontal: 8,
+  },
+  breadcrumbCurrent: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  listView: {
+    flex: 1,
+  },
+  categoryListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  categoryListItemContent: {
+    flex: 1,
+  },
+  categoryListItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  categoryListItemSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  subcategoryListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 14,
+    marginBottom: 8,
+    marginLeft: 16,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  subcategoryIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  subcategoryListItemContent: {
+    flex: 1,
+  },
+  subcategoryListItemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  subcategoryListItemSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
   },
   resultsSection: {
     marginBottom: 16,
