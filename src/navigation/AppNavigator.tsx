@@ -184,29 +184,6 @@ const FavoritesScreenWrapper: React.FC<any> = ({ navigation }) => {
   return <FavoritesScreen navigation={navigation} onNavigateToProvider={handleNavigateToProvider} />;
 };
 
-// Wrapper pour ProfileScreen avec navigation
-const ProfileScreenWrapper: React.FC<any> = (props) => {
-  return <ProfileScreen {...props} />;
-};
-
-// Wrapper pour AuthScreen avec navigation
-const AuthScreenWrapper: React.FC<any> = (props) => {
-  console.log('AuthScreen props:', props);
-  return <AuthScreen {...props} />;
-};
-
-// Wrapper pour MainStack avec navigation
-const MainStackWrapper: React.FC<any> = (props) => {
-  console.log('MainStack props:', props);
-  return <MainStack {...props} />;
-};
-
-// Wrapper pour ProviderModeStack avec navigation
-const ProviderModeStackWrapper: React.FC<any> = (props) => {
-  console.log('ProviderModeStack props:', props);
-  return <ProviderModeStack {...props} />;
-};
-
 // Stack pour les messages
 const MessagesStack = () => {
   return (
@@ -293,7 +270,7 @@ const MainTabs = () => {
       />
       <Tab.Screen 
         name="Profil" 
-        component={ProfileScreenWrapper}
+        component={(props) => <ProfileScreen {...props} />}
         options={{
           tabBarLabel: 'Profil',
           tabBarTestID: 'profile-tab',
@@ -347,15 +324,24 @@ const AppNavigator: React.FC = () => {
       >
         <Stack.Screen 
           name="Auth" 
-          component={AuthScreenWrapper}
+          component={(props) => {
+            console.log('AuthScreen props:', props);
+            return <AuthScreen {...props} />;
+          }} 
         />
         <Stack.Screen 
           name="Main" 
-          component={MainStackWrapper}
+          component={(props) => {
+            console.log('MainStack props:', props);
+            return <MainStack {...props} />;
+          }} 
         />
         <Stack.Screen 
           name="Provider" 
-          component={ProviderModeStackWrapper}
+          component={(props) => {
+            console.log('ProviderModeStack props:', props);
+            return <ProviderModeStack {...props} />;
+          }} 
         />
       </Stack.Navigator>
     </NavigationContainer>

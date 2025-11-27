@@ -1,6 +1,6 @@
 export const COLORS = {
-  // Couleurs principales inspirées de Planity/Planit (Dark Blue)
-  primary: '#1E3A8A', // Dark blue - couleur principale
+  // Couleurs principales inspirées du logo ADM
+  primary: '#1E3A8A', // Bleu foncé du logo
   primaryLight: '#3B82F6', // Bleu plus clair pour les accents
   primaryDark: '#1E40AF', // Bleu encore plus foncé
   
@@ -9,11 +9,10 @@ export const COLORS = {
   secondaryLight: '#94A3B8',
   secondaryDark: '#475569',
   
-  // Couleurs d'accent (inspiré de Planit - Gold/Yellow pour Featured)
-  accent: '#F59E0B', // Gold/Yellow pour badges Featured et highlights
-  accentLight: '#FCD34D', // Gold clair
-  accentDark: '#D97706', // Gold foncé
-  featured: '#F59E0B', // Badge Featured (jaune/gold)
+  // Couleurs d'accent
+  accent: '#06B6D4', // Cyan moderne pour les highlights
+  accentLight: '#22D3EE',
+  accentDark: '#0891B2',
   
   // Couleurs neutres
   white: '#FFFFFF',
