@@ -2,11 +2,54 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   avatar?: string;
   isProvider: boolean;
   rating?: number;
   reviewCount?: number;
+  // Données de connexion
+  password?: string; // Crypté en production
+  verified?: boolean; // Vérification d'identité
+}
+
+// Profil Client complet
+export interface ClientProfile extends User {
+  firstName: string;
+  lastName: string;
+  age?: number;
+  ageRange?: string; // Ex: "25-30"
+  // Localisation
+  city?: string;
+  neighborhood?: string; // Ex: "Paris 15e", "Lyon centre"
+  approximateLocation?: string;
+  // Préférences
+  favoriteServiceTypes?: string[]; // IDs des catégories préférées
+  preferredProviderGender?: 'male' | 'female' | 'any';
+  priceRange?: {
+    min: number;
+    max: number;
+  };
+  // Favoris
+  favoriteProviders?: string[]; // IDs des prestataires favoris
+  favoriteCategories?: { [categoryId: string]: string[] }; // Favoris par catégorie
+  // Historique
+  bookingHistory?: string[]; // IDs des réservations
+  contactedProviders?: string[]; // IDs des prestataires contactés
+  reviewsPosted?: string[]; // IDs des avis déposés
+  // Notifications
+  notificationPreferences?: {
+    newProvidersNearby?: boolean;
+    offersAndPromotions?: boolean;
+    bookingReminders?: boolean;
+  };
+  // Réseaux sociaux
+  socialMedia?: {
+    instagram?: string;
+    tiktok?: string;
+  };
+  // Fidélité
+  loyaltyPoints?: number;
+  subscriptionHistory?: SubscriptionHistory[];
 }
 
 export interface Certificate {
@@ -19,20 +62,68 @@ export interface Certificate {
   verifiedAt?: string;
 }
 
+// Profil Prestataire complet
 export interface ServiceProvider extends User {
-  services: Service[];
+  // Informations personnelles
+  firstName: string;
+  lastName: string;
+  age?: number;
+  // Coordonnées
+  phone?: string; // Optionnel mais recommandé
+  // Localisation
   location: Location;
-  description: string;
-  experience: number;
-  certifications: Certificate[]; // Changé de string[] à Certificate[]
-  availability: Availability[];
+  city?: string;
+  activityZone?: string; // Ex: "Paris 15e", "Île-de-France"
+  // Informations professionnelles
+  mainSkills?: string[]; // Ex: ["coiffure", "maquillage", "ongles"]
+  description: string; // Bio du prestataire
+  experience: number; // Années d'expérience
+  experienceLevel?: 'beginner' | 'intermediate' | 'expert'; // Niveau d'expérience
+  // Services
+  services: Service[];
+  // Tarification
   priceRange: {
     min: number;
     max: number;
   };
-  isPremium?: boolean; // Statut Premium
-  acceptsEmergency?: boolean; // Accepte les réservations urgentes
-  emergencyCredits?: number; // Crédits disponibles pour urgences (simulation)
+  // Disponibilités
+  availability: Availability[];
+  // Portfolio/Galerie
+  portfolio?: PortfolioItem[];
+  // Avis et notation
+  rating?: number;
+  reviewCount?: number;
+  // Réseaux sociaux
+  socialMedia?: {
+    instagram?: string;
+    tiktok?: string;
+    facebook?: string;
+  };
+  // Statut/Abonnement
+  isPremium?: boolean;
+  subscriptionType?: 'free' | 'premium';
+  subscriptionStartDate?: string;
+  subscriptionExpiryDate?: string;
+  // Urgence
+  acceptsEmergency?: boolean;
+  emergencyCredits?: number;
+  // Certifications
+  certifications: Certificate[];
+  // Sécurité
+  verified?: boolean; // Vérification d'identité
+}
+
+export interface PortfolioItem {
+  id: string;
+  type: 'photo' | 'video';
+  url: string;
+  thumbnail?: string;
+  title?: string;
+  description?: string;
+  category?: string; // Catégorie de service associée
+  createdAt: string;
+  isBeforeAfter?: boolean; // Photo avant/après
+  beforeImage?: string; // URL de l'image "avant"
 }
 
 export enum ServiceLevel {
@@ -49,8 +140,16 @@ export interface Service {
   duration: number; // en minutes
   price: number;
   category: ServiceCategory;
+  subcategory?: ServiceSubcategory; // Sous-catégorie optionnelle
   image?: string;
   level?: ServiceLevel; // Niveau de service
+  isCustom?: boolean; // Prestation personnalisée ajoutée par le prestataire
+  customServiceData?: {
+    providerId: string;
+    createdAt: string;
+    isModerated?: boolean; // Si modération nécessaire
+    moderationStatus?: 'pending' | 'approved' | 'rejected';
+  };
 }
 
 export interface ServiceCategory {
@@ -58,6 +157,15 @@ export interface ServiceCategory {
   name: string;
   icon: string;
   color: string;
+  subcategories?: ServiceSubcategory[]; // Sous-catégories
+}
+
+export interface ServiceSubcategory {
+  id: string;
+  name: string;
+  parentCategoryId: string;
+  icon?: string;
+  color?: string;
 }
 
 export interface Location {
@@ -150,4 +258,12 @@ export enum PaymentMethod {
   PAYPAL = 'paypal',
   APPLE_PAY = 'apple_pay',
   GOOGLE_PAY = 'google_pay'
+}
+
+export interface SubscriptionHistory {
+  id: string;
+  type: 'free' | 'premium';
+  startDate: string;
+  endDate?: string;
+  isActive: boolean;
 } 

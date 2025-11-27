@@ -13,13 +13,25 @@ interface ProfileScreenProps {
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { toast, showSuccess, showInfo, showWarning, hideToast } = useToast();
   const user = {
+    firstName: 'Marie',
+    lastName: 'Dupont',
     name: 'Marie Dupont',
     email: 'marie.dupont@email.com',
     phone: '+33 6 12 34 56 78',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    age: 28,
+    ageRange: '25-30',
+    city: 'Paris',
+    neighborhood: 'Paris 15e',
     memberSince: '2023',
     totalBookings: 12,
-    favoriteProviders: 5
+    favoriteProviders: 5,
+    favoriteServiceTypes: ['coiffure', 'maquillage'],
+    preferredProviderGender: 'any' as 'male' | 'female' | 'any',
+    priceRange: { min: 30, max: 100 },
+    loyaltyPoints: 150,
+    instagram: '@marie_dupont',
+    tiktok: '',
   };
 
   const handleMenuPress = (action: string) => {
@@ -127,7 +139,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{user.name}</Text>
             <Text style={styles.profileEmail}>{user.email}</Text>
-            <Text style={styles.profilePhone}>{user.phone}</Text>
+            {user.phone && <Text style={styles.profilePhone}>{user.phone}</Text>}
+            {user.neighborhood && (
+              <View style={styles.locationRow}>
+                <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.profileLocation}>{user.neighborhood}</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -145,10 +163,54 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.memberSince}</Text>
-          <Text style={styles.statLabel}>Membre depuis</Text>
+          <Text style={styles.statNumber}>{user.loyaltyPoints}</Text>
+          <Text style={styles.statLabel}>Points</Text>
         </View>
       </View>
+
+      {/* Préférences */}
+      <View style={styles.preferencesSection}>
+        <Text style={styles.sectionTitle}>Préférences</Text>
+        {user.favoriteServiceTypes && user.favoriteServiceTypes.length > 0 && (
+          <View style={styles.preferenceItem}>
+            <Text style={styles.preferenceLabel}>Services favoris</Text>
+            <View style={styles.tagsContainer}>
+              {user.favoriteServiceTypes.map((service, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{service}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+        {user.priceRange && (
+          <View style={styles.preferenceItem}>
+            <Text style={styles.preferenceLabel}>Fourchette de prix</Text>
+            <Text style={styles.preferenceValue}>
+              {user.priceRange.min}€ - {user.priceRange.max}€
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Réseaux sociaux */}
+      {(user.instagram || user.tiktok) && (
+        <View style={styles.socialSection}>
+          <Text style={styles.sectionTitle}>Réseaux sociaux</Text>
+          {user.instagram && (
+            <View style={styles.socialItem}>
+              <Ionicons name="logo-instagram" size={20} color={COLORS.primary} />
+              <Text style={styles.socialText}>{user.instagram}</Text>
+            </View>
+          )}
+          {user.tiktok && (
+            <View style={styles.socialItem}>
+              <Ionicons name="musical-notes-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.socialText}>{user.tiktok}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Section menu */}
       <View style={styles.menuSection}>
@@ -237,6 +299,75 @@ const styles = StyleSheet.create({
   profilePhone: {
     fontSize: 16,
     color: COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  profileLocation: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginLeft: 4,
+  },
+  preferencesSection: {
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 16,
+  },
+  preferenceItem: {
+    marginBottom: 16,
+  },
+  preferenceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+  },
+  preferenceValue: {
+    fontSize: 16,
+    color: COLORS.textPrimary,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    backgroundColor: COLORS.lightGray,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tagText: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+  socialSection: {
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    padding: 20,
+  },
+  socialItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  socialText: {
+    fontSize: 16,
+    color: COLORS.textPrimary,
+    marginLeft: 12,
   },
   statsContainer: {
     margin: 16,

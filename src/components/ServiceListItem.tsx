@@ -76,13 +76,28 @@ const ServiceListItem: React.FC<ServiceListItemProps> = ({
       {/* Informations du service */}
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.serviceName}>{service.name}</Text>
+          <View style={styles.serviceNameContainer}>
+            <Text style={styles.serviceName}>{service.name}</Text>
+            {service.isCustom && (
+              <View style={styles.customBadge}>
+                <Ionicons name="star" size={12} color={COLORS.accent} />
+                <Text style={styles.customBadgeText}>Personnalisé</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.priceContainer}>
             <Text style={styles.price}>{formatPrice(service.price)}</Text>
           </View>
         </View>
         
         <Text style={styles.description}>{service.description}</Text>
+        
+        {/* Sous-catégorie si disponible */}
+        {service.subcategory && (
+          <View style={styles.subcategoryContainer}>
+            <Text style={styles.subcategoryText}>{service.subcategory.name}</Text>
+          </View>
+        )}
         
         {/* Informations du prestataire */}
         <View style={styles.providerInfo}>
@@ -100,6 +115,13 @@ const ServiceListItem: React.FC<ServiceListItemProps> = ({
               <Ionicons name="star" size={14} color={COLORS.warning} />
               <Text style={styles.rating}>{provider.rating}</Text>
               <Text style={styles.reviewCount}>({provider.reviewCount})</Text>
+              {provider.activityZone && (
+                <>
+                  <Text style={styles.separator}>•</Text>
+                  <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
+                  <Text style={styles.locationText}>{provider.activityZone}</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -159,12 +181,41 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  serviceNameContainer: {
+    flex: 1,
+    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   serviceName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
-    flex: 1,
-    marginRight: 12,
+  },
+  customBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accent + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
+  },
+  customBadgeText: {
+    fontSize: 10,
+    color: COLORS.accent,
+    fontWeight: '600',
+  },
+  subcategoryContainer: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  subcategoryText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontStyle: 'italic',
   },
   priceContainer: {
     backgroundColor: COLORS.primary,
@@ -220,6 +271,16 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   reviewCount: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginLeft: 4,
+  },
+  separator: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginHorizontal: 6,
+  },
+  locationText: {
     fontSize: 12,
     color: COLORS.textSecondary,
     marginLeft: 4,

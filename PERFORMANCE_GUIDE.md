@@ -184,3 +184,6 @@ const MyComponent = () => {
 - [ ] Réduction de la taille du bundle
 
 
+
+
+

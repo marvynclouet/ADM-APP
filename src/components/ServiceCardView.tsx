@@ -76,13 +76,28 @@ const ServiceCardView: React.FC<ServiceCardViewProps> = ({
       
       {/* Contenu */}
       <View style={styles.content}>
-        <Text style={styles.serviceName} numberOfLines={2}>
-          {service.name}
-        </Text>
+        <View style={styles.serviceNameRow}>
+          <Text style={styles.serviceName} numberOfLines={2}>
+            {service.name}
+          </Text>
+          {service.isCustom && (
+            <View style={styles.customBadge}>
+              <Ionicons name="star" size={10} color={COLORS.accent} />
+              <Text style={styles.customBadgeText}>Perso</Text>
+            </View>
+          )}
+        </View>
         
         <Text style={styles.description} numberOfLines={2}>
           {service.description}
         </Text>
+        
+        {/* Sous-catégorie si disponible */}
+        {service.subcategory && (
+          <Text style={styles.subcategoryText} numberOfLines={1}>
+            {service.subcategory.name}
+          </Text>
+        )}
         
         {/* Prestataire */}
         <View style={styles.providerInfo}>
@@ -101,6 +116,14 @@ const ServiceCardView: React.FC<ServiceCardViewProps> = ({
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color={COLORS.warning} />
               <Text style={styles.rating}>{provider.rating}</Text>
+              {provider.activityZone && (
+                <>
+                  <Text style={styles.separator}>•</Text>
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {provider.activityZone}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -163,18 +186,45 @@ const styles = StyleSheet.create({
   content: {
     padding: 12,
   },
+  serviceNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
   serviceName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
-    marginBottom: 4,
+    flex: 1,
     lineHeight: 18,
+  },
+  customBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accent + '20',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 2,
+  },
+  customBadgeText: {
+    fontSize: 8,
+    color: COLORS.accent,
+    fontWeight: '600',
   },
   description: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    marginBottom: 8,
+    marginBottom: 4,
     lineHeight: 14,
+  },
+  subcategoryText: {
+    fontSize: 9,
+    color: COLORS.primary,
+    fontStyle: 'italic',
+    marginBottom: 8,
   },
   providerInfo: {
     flexDirection: 'row',
@@ -211,6 +261,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginLeft: 2,
+  },
+  separator: {
+    fontSize: 9,
+    color: COLORS.textSecondary,
+    marginHorizontal: 4,
+  },
+  locationText: {
+    fontSize: 8,
+    color: COLORS.textSecondary,
+    flex: 1,
   },
   footer: {
     flexDirection: 'row',

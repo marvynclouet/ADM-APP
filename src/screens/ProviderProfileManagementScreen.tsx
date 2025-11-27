@@ -23,13 +23,24 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
   navigation,
 }) => {
   const [profileData, setProfileData] = useState({
-    name: 'Sophie Martin',
+    firstName: 'Sophie',
+    lastName: 'Martin',
     email: 'sophie.martin@email.com',
     phone: '+33 6 12 34 56 78',
+    age: 28,
+    city: 'Paris',
+    activityZone: 'Paris 8e',
     address: '15 rue de la Paix, 75001 Paris',
     bio: 'Coiffeuse professionnelle avec 10 ans d\'expérience',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie&backgroundColor=b6e3f4',
     radius: 10, // km
+    mainSkills: ['manucure', 'pédicure', 'nail art'],
+    experienceLevel: 'intermediate' as 'beginner' | 'intermediate' | 'expert',
+    experience: 5,
+    instagram: '@sophie_nails',
+    tiktok: '',
+    facebook: '',
+    subscriptionType: 'premium' as 'free' | 'premium',
   });
 
   const [portfolio, setPortfolio] = useState<string[]>([
@@ -146,14 +157,39 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
       {/* Informations personnelles */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Informations personnelles</Text>
+        <View style={styles.inputRow}>
+          <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+            <Text style={styles.inputLabel}>Prénom</Text>
+            <TextInput
+              style={[styles.input, !isEditing && styles.inputDisabled]}
+              value={profileData.firstName}
+              onChangeText={text => setProfileData({ ...profileData, firstName: text })}
+              editable={isEditing}
+              placeholder="Prénom"
+            />
+          </View>
+          <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+            <Text style={styles.inputLabel}>Nom</Text>
+            <TextInput
+              style={[styles.input, !isEditing && styles.inputDisabled]}
+              value={profileData.lastName}
+              onChangeText={text => setProfileData({ ...profileData, lastName: text })}
+              editable={isEditing}
+              placeholder="Nom"
+            />
+          </View>
+        </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Nom complet</Text>
+          <Text style={styles.inputLabel}>Âge (optionnel)</Text>
           <TextInput
             style={[styles.input, !isEditing && styles.inputDisabled]}
-            value={profileData.name}
-            onChangeText={text => setProfileData({ ...profileData, name: text })}
+            value={profileData.age?.toString() || ''}
+            onChangeText={text =>
+              setProfileData({ ...profileData, age: text ? parseInt(text) : undefined })
+            }
             editable={isEditing}
-            placeholder="Votre nom"
+            placeholder="28"
+            keyboardType="numeric"
           />
         </View>
         <View style={styles.inputGroup}>
@@ -168,7 +204,7 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Téléphone</Text>
+          <Text style={styles.inputLabel}>Téléphone (optionnel)</Text>
           <TextInput
             style={[styles.input, !isEditing && styles.inputDisabled]}
             value={profileData.phone}
@@ -178,14 +214,29 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
             keyboardType="phone-pad"
           />
         </View>
+      </View>
+
+      {/* Coordonnées */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Coordonnées</Text>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Adresse</Text>
+          <Text style={styles.inputLabel}>Ville / Zone d'activité</Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.activityZone}
+            onChangeText={text => setProfileData({ ...profileData, activityZone: text })}
+            editable={isEditing}
+            placeholder="Paris 8e, Île-de-France..."
+          />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Adresse complète (privée)</Text>
           <TextInput
             style={[styles.input, !isEditing && styles.inputDisabled]}
             value={profileData.address}
             onChangeText={text => setProfileData({ ...profileData, address: text })}
             editable={isEditing}
-            placeholder="Votre adresse"
+            placeholder="15 rue de la Paix, 75001 Paris"
           />
         </View>
         <View style={styles.inputGroup}>
@@ -201,6 +252,29 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
             keyboardType="numeric"
           />
         </View>
+      </View>
+
+      {/* Informations professionnelles */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Informations professionnelles</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Compétences principales</Text>
+          <Text style={styles.inputHint}>
+            Séparez par des virgules (ex: coiffure, maquillage, ongles)
+          </Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.mainSkills.join(', ')}
+            onChangeText={text =>
+              setProfileData({
+                ...profileData,
+                mainSkills: text.split(',').map(s => s.trim()).filter(s => s),
+              })
+            }
+            editable={isEditing}
+            placeholder="coiffure, maquillage, ongles"
+          />
+        </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Bio / Description</Text>
           <TextInput
@@ -212,6 +286,127 @@ const ProviderProfileManagementScreen: React.FC<ProviderProfileManagementScreenP
             multiline
             numberOfLines={4}
           />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Années d'expérience</Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.experience.toString()}
+            onChangeText={text =>
+              setProfileData({ ...profileData, experience: parseInt(text) || 0 })
+            }
+            editable={isEditing}
+            placeholder="5"
+            keyboardType="numeric"
+          />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Niveau d'expérience</Text>
+          {isEditing ? (
+            <View style={styles.levelSelector}>
+              {(['beginner', 'intermediate', 'expert'] as const).map(level => (
+                <TouchableOpacity
+                  key={level}
+                  style={[
+                    styles.levelButton,
+                    profileData.experienceLevel === level && styles.levelButtonActive,
+                  ]}
+                  onPress={() => setProfileData({ ...profileData, experienceLevel: level })}
+                >
+                  <Text
+                    style={[
+                      styles.levelButtonText,
+                      profileData.experienceLevel === level && styles.levelButtonTextActive,
+                    ]}
+                  >
+                    {level === 'beginner'
+                      ? 'Débutant'
+                      : level === 'intermediate'
+                      ? 'Confirmé'
+                      : 'Expert'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.input}>
+              {profileData.experienceLevel === 'beginner'
+                ? 'Débutant'
+                : profileData.experienceLevel === 'intermediate'
+                ? 'Confirmé'
+                : 'Expert'}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Réseaux sociaux */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Réseaux sociaux (optionnel)</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Instagram</Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.instagram}
+            onChangeText={text => setProfileData({ ...profileData, instagram: text })}
+            editable={isEditing}
+            placeholder="@username"
+          />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>TikTok</Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.tiktok}
+            onChangeText={text => setProfileData({ ...profileData, tiktok: text })}
+            editable={isEditing}
+            placeholder="@username"
+          />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Facebook</Text>
+          <TextInput
+            style={[styles.input, !isEditing && styles.inputDisabled]}
+            value={profileData.facebook}
+            onChangeText={text => setProfileData({ ...profileData, facebook: text })}
+            editable={isEditing}
+            placeholder="Page ou profil Facebook"
+          />
+        </View>
+      </View>
+
+      {/* Statut / Abonnement */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Statut / Abonnement</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Type de compte</Text>
+          {isEditing ? (
+            <View style={styles.levelSelector}>
+              {(['free', 'premium'] as const).map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.levelButton,
+                    profileData.subscriptionType === type && styles.levelButtonActive,
+                  ]}
+                  onPress={() => setProfileData({ ...profileData, subscriptionType: type })}
+                >
+                  <Text
+                    style={[
+                      styles.levelButtonText,
+                      profileData.subscriptionType === type && styles.levelButtonTextActive,
+                    ]}
+                  >
+                    {type === 'free' ? 'Gratuit' : 'Premium'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.input}>
+              {profileData.subscriptionType === 'free' ? 'Gratuit' : 'Premium'}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -385,6 +580,10 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.white,
   },
+  inputRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
   inputGroup: {
     marginBottom: 16,
   },
@@ -393,6 +592,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: 8,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  levelSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  levelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+  },
+  levelButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  levelButtonText: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  levelButtonTextActive: {
+    color: COLORS.white,
   },
   input: {
     backgroundColor: COLORS.lightGray,
@@ -498,4 +729,7 @@ const styles = StyleSheet.create({
 });
 
 export default ProviderProfileManagementScreen;
+
+
+
 

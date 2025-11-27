@@ -29,6 +29,7 @@ interface Service {
   image?: string;
   isActive: boolean;
   level?: ServiceLevel;
+  isCustom?: boolean; // Prestation personnalisée
 }
 
 interface ProviderServicesManagementScreenProps {
@@ -72,6 +73,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
     image: '',
     isActive: true,
     level: ServiceLevel.INTERMEDIATE,
+    isCustom: false, // Prestation personnalisée
   });
 
   const categories = ['Coiffure', 'Beauté', 'Massage', 'Soins', 'Autre'];
@@ -92,6 +94,24 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       category: 'Coiffure',
       image: '',
       isActive: true,
+      level: ServiceLevel.INTERMEDIATE,
+      isCustom: false,
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleAddCustomService = () => {
+    setEditingService(null);
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      duration: '',
+      category: 'Autre',
+      image: '',
+      isActive: true,
+      level: ServiceLevel.INTERMEDIATE,
+      isCustom: true, // Marquer comme prestation personnalisée
     });
     setIsModalVisible(true);
   };
@@ -107,6 +127,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       image: service.image || '',
       isActive: service.isActive,
       level: service.level || ServiceLevel.INTERMEDIATE,
+      isCustom: service.isCustom || false,
     });
     setIsModalVisible(true);
   };
@@ -157,6 +178,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       image: formData.image,
       isActive: formData.isActive,
       level: formData.level,
+      isCustom: formData.isCustom,
     };
 
     if (editingService) {
@@ -186,9 +208,15 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mes Services</Text>
-          <TouchableOpacity onPress={handleAddService} style={styles.addButton}>
-            <Ionicons name="add" size={24} color={COLORS.white} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={handleAddCustomService} style={styles.customServiceButton}>
+              <Ionicons name="add-circle-outline" size={20} color={COLORS.white} />
+              <Text style={styles.customServiceText}>Personnalisé</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleAddService} style={styles.addButton}>
+              <Ionicons name="add" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -219,7 +247,15 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
                   />
                 </View>
                 <View style={styles.serviceMeta}>
-                  <Text style={styles.serviceCategory}>{service.category}</Text>
+                  <View style={styles.serviceCategoryRow}>
+                    <Text style={styles.serviceCategory}>{service.category}</Text>
+                    {service.isCustom && (
+                      <View style={styles.customBadge}>
+                        <Ionicons name="star" size={12} color={COLORS.accent} />
+                        <Text style={styles.customBadgeText}>Personnalisé</Text>
+                      </View>
+                    )}
+                  </View>
                   {service.level && <LevelBadge level={service.level} size="small" />}
                 </View>
                 <Text style={styles.serviceDescription} numberOfLines={2}>
@@ -371,6 +407,16 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
                 ))}
               </View>
 
+              {/* Prestation personnalisée */}
+              {formData.isCustom && (
+                <View style={styles.customServiceInfo}>
+                  <Ionicons name="information-circle" size={20} color={COLORS.accent} />
+                  <Text style={styles.customServiceInfoText}>
+                    Cette prestation personnalisée sera soumise à validation par ADM si nécessaire.
+                  </Text>
+                </View>
+              )}
+
               {/* Statut */}
               <View style={styles.switchContainer}>
                 <Text style={styles.inputLabel}>Service actif</Text>
@@ -429,6 +475,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  customServiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 4,
+  },
+  customServiceText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   addButton: {
     padding: 8,
   },
@@ -469,13 +534,47 @@ const styles = StyleSheet.create({
   },
   serviceMeta: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  serviceCategoryRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
   },
   serviceCategory: {
     fontSize: 14,
     color: COLORS.primary,
+  },
+  customBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accent + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
+  },
+  customBadgeText: {
+    fontSize: 10,
+    color: COLORS.accent,
+    fontWeight: '600',
+  },
+  customServiceInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.accent + '15',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  customServiceInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
   serviceDescription: {
     fontSize: 14,

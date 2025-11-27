@@ -30,6 +30,7 @@ interface SearchScreenProps {
 const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [showMap, setShowMap] = useState(false);
@@ -53,25 +54,51 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const filteredServices = useMemo(() => {
     let filtered = servicesWithProviders;
 
-    // Filtre par recherche
+    // Filtre par recherche (amélioré avec les nouveaux champs)
     if (searchQuery) {
-      filtered = filtered.filter(item =>
-        item.service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.provider.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => {
+        const service = item.service;
+        const provider = item.provider;
+        
+        // Recherche dans le service
+        const serviceMatch = 
+          service.name.toLowerCase().includes(query) ||
+          service.description.toLowerCase().includes(query) ||
+          (service.subcategory?.name.toLowerCase().includes(query) || false);
+        
+        // Recherche dans le prestataire
+        const providerMatch = 
+          provider.name.toLowerCase().includes(query) ||
+          provider.firstName?.toLowerCase().includes(query) ||
+          provider.lastName?.toLowerCase().includes(query) ||
+          provider.description?.toLowerCase().includes(query) ||
+          provider.activityZone?.toLowerCase().includes(query) ||
+          provider.city?.toLowerCase().includes(query) ||
+          (provider.mainSkills?.some(skill => skill.toLowerCase().includes(query)) || false);
+        
+        return serviceMatch || providerMatch;
+      });
     }
 
     // Filtre par catégorie
     if (selectedCategory) {
       filtered = filtered.filter(item =>
+        item.service.category.id === selectedCategory || 
         item.service.category.name === selectedCategory
+      );
+    }
+
+    // Filtre par sous-catégorie
+    if (selectedSubcategory) {
+      filtered = filtered.filter(item =>
+        item.service.subcategory?.id === selectedSubcategory
       );
     }
 
     // Trier par distance (plus proche en premier)
     return filtered.sort((a, b) => a.distance - b.distance);
-  }, [servicesWithProviders, searchQuery, selectedCategory]);
+  }, [servicesWithProviders, searchQuery, selectedCategory, selectedSubcategory]);
 
   const handleServicePress = (serviceId: string) => {
     const serviceData = filteredServices.find(item => item.service.id === serviceId);
@@ -90,14 +117,38 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const handleCategoryPress = (categoryId: string) => {
     const category = SERVICE_CATEGORIES.find(c => c.id === categoryId);
     if (category) {
-      setSelectedCategory(selectedCategory === category.name ? null : category.name);
+      if (selectedCategory === category.id) {
+        // Désélectionner la catégorie et la sous-catégorie
+        setSelectedCategory(null);
+        setSelectedSubcategory(null);
+      } else {
+        // Sélectionner la catégorie et réinitialiser la sous-catégorie
+        setSelectedCategory(category.id);
+        setSelectedSubcategory(null);
+      }
+    }
+  };
+
+  const handleSubcategoryPress = (subcategoryId: string) => {
+    if (selectedSubcategory === subcategoryId) {
+      setSelectedSubcategory(null);
+    } else {
+      setSelectedSubcategory(subcategoryId);
     }
   };
 
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory(null);
+    setSelectedSubcategory(null);
   };
+
+  // Obtenir les sous-catégories de la catégorie sélectionnée
+  const availableSubcategories = useMemo(() => {
+    if (!selectedCategory) return [];
+    const category = SERVICE_CATEGORIES.find(c => c.id === selectedCategory);
+    return category?.subcategories || [];
+  }, [selectedCategory]);
 
   const handleBackFromProvider = () => {
     setSelectedProvider(null);
@@ -165,7 +216,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {(searchQuery || selectedCategory) && (
+          {(searchQuery || selectedCategory || selectedSubcategory) && (
             <TouchableOpacity onPress={clearFilters}>
               <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
             </TouchableOpacity>
@@ -193,18 +244,18 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
                 key={category.id}
                 style={[
                   styles.categoryChip,
-                  selectedCategory === category.name && styles.categoryChipActive
+                  selectedCategory === category.id && styles.categoryChipActive
                 ]}
                 onPress={() => handleCategoryPress(category.id)}
               >
                 <Ionicons 
                   name={category.icon as any} 
                   size={16} 
-                  color={selectedCategory === category.name ? COLORS.white : COLORS.primary} 
+                  color={selectedCategory === category.id ? COLORS.white : COLORS.primary} 
                 />
                 <Text style={[
                   styles.categoryChipText,
-                  selectedCategory === category.name && styles.categoryChipTextActive
+                  selectedCategory === category.id && styles.categoryChipTextActive
                 ]}>
                   {category.name}
                 </Text>
@@ -213,11 +264,41 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
           </ScrollView>
         </View>
 
+        {/* Filtres par sous-catégorie (si une catégorie est sélectionnée) */}
+        {selectedCategory && availableSubcategories.length > 0 && (
+          <View style={styles.filtersSection}>
+            <Text style={styles.sectionTitle}>Sous-catégories</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoriesContainer}
+            >
+              {availableSubcategories.map((subcategory) => (
+                <TouchableOpacity
+                  key={subcategory.id}
+                  style={[
+                    styles.subcategoryChip,
+                    selectedSubcategory === subcategory.id && styles.subcategoryChipActive
+                  ]}
+                  onPress={() => handleSubcategoryPress(subcategory.id)}
+                >
+                  <Text style={[
+                    styles.subcategoryChipText,
+                    selectedSubcategory === subcategory.id && styles.subcategoryChipTextActive
+                  ]}>
+                    {subcategory.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Résultats */}
         <View style={styles.resultsSection}>
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsTitle}>
-              {searchQuery || selectedCategory ? 'Résultats' : 'Services disponibles'}
+              {searchQuery || selectedCategory || selectedSubcategory ? 'Résultats' : 'Services disponibles'}
             </Text>
             <View style={styles.resultsControls}>
               <Text style={styles.resultsCount}>
@@ -407,6 +488,27 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   categoryChipTextActive: {
+    color: COLORS.white,
+  },
+  subcategoryChip: {
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+  },
+  subcategoryChipActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  subcategoryChipText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  subcategoryChipTextActive: {
     color: COLORS.white,
   },
   resultsSection: {
