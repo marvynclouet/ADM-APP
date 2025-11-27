@@ -60,26 +60,6 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
     });
   }, []);
 
-  // Grouper les prestataires uniques pour la vue Planity
-  const uniqueProviders = useMemo(() => {
-    const providerMap = new Map();
-    filteredServices.forEach(item => {
-      if (!providerMap.has(item.provider.id)) {
-        providerMap.set(item.provider.id, {
-          provider: item.provider,
-          services: [item.service],
-          distance: item.distance
-        });
-      } else {
-        const existing = providerMap.get(item.provider.id);
-        if (!existing.services.find((s: Service) => s.id === item.service.id)) {
-          existing.services.push(item.service);
-        }
-      }
-    });
-    return Array.from(providerMap.values());
-  }, [filteredServices]);
-
   // Filtrer et trier les services
   const filteredServices = useMemo(() => {
     let filtered = servicesWithProviders;
@@ -129,6 +109,26 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
     // Trier par distance (plus proche en premier)
     return filtered.sort((a, b) => a.distance - b.distance);
   }, [servicesWithProviders, searchQuery, selectedCategory, selectedSubcategory]);
+
+  // Grouper les prestataires uniques pour la vue Planity
+  const uniqueProviders = useMemo(() => {
+    const providerMap = new Map();
+    filteredServices.forEach(item => {
+      if (!providerMap.has(item.provider.id)) {
+        providerMap.set(item.provider.id, {
+          provider: item.provider,
+          services: [item.service],
+          distance: item.distance
+        });
+      } else {
+        const existing = providerMap.get(item.provider.id);
+        if (!existing.services.find((s: Service) => s.id === item.service.id)) {
+          existing.services.push(item.service);
+        }
+      }
+    });
+    return Array.from(providerMap.values());
+  }, [filteredServices]);
 
   const handleServicePress = (serviceId: string) => {
     const serviceData = filteredServices.find(item => item.service.id === serviceId);
