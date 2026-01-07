@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmez votre inscription - ADM</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      line-height: 1.6;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: bold;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .content {
+      padding: 40px 30px;
+      color: #333333;
+    }
+    .greeting {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #667eea;
+    }
+    .message {
+      font-size: 16px;
+      color: #555555;
+      margin-bottom: 30px;
+      line-height: 1.8;
+    }
+    .button-container {
+      text-align: center;
+      margin: 40px 0;
+    }
+    .confirm-button {
+      display: inline-block;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .confirm-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+    .link-fallback {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #666666;
+      word-break: break-all;
+    }
+    .link-fallback strong {
+      color: #333333;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .footer {
+      padding: 30px;
+      background-color: #f8f9fa;
+      text-align: center;
+      font-size: 14px;
+      color: #666666;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer p {
+      margin: 8px 0;
+    }
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    .security-note {
+      margin-top: 30px;
+      padding: 15px;
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #856404;
+    }
+    .divider {
+      height: 1px;
+      background-color: #e0e0e0;
+      margin: 30px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header avec logo et titre -->
+    <div class="header">
+      <div class="logo">ADM</div>
+      <h1>Bienvenue sur ADM !</h1>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="content">
+      <div class="greeting">
+        Bonjour,
+      </div>
+
+      <div class="message">
+        Merci de vous être inscrit sur <strong>ADM</strong> ! Nous sommes ravis de vous accueillir dans notre communauté de prestataires de beauté et de clients.
+      </div>
+
+      <div class="message">
+        Pour finaliser votre inscription et activer votre compte, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous :
+      </div>
+
+      <!-- Bouton de confirmation -->
+      <div class="button-container">
+        <a href="{{ .ConfirmationURL }}" class="confirm-button">
+          ✉️ Confirmer mon email
+        </a>
+      </div>
+
+      <!-- Lien de secours -->
+      <div class="link-fallback">
+        <strong>Le bouton ne fonctionne pas ?</strong>
+        Copiez et collez ce lien dans votre navigateur :<br>
+        <a href="{{ .ConfirmationURL }}" style="color: #667eea;">{{ .ConfirmationURL }}</a>
+      </div>
+
+      <!-- Note de sécurité -->
+      <div class="security-note">
+        <strong>🔒 Note de sécurité :</strong> Ce lien est valide pendant 24 heures. Si vous n'avez pas créé de compte sur ADM, vous pouvez ignorer cet email en toute sécurité.
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="message" style="font-size: 14px; color: #888888;">
+        <strong>Que se passe-t-il ensuite ?</strong><br>
+        Une fois votre email confirmé, vous pourrez :
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li>Accéder à tous les services de la plateforme</li>
+          <li>Réserver des prestations de beauté</li>
+          <li>Gérer votre profil et vos réservations</li>
+          <li>Découvrir des prestataires près de chez vous</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p><strong>ADM - Votre plateforme de beauté</strong></p>
+      <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+      <p>
+        <a href="mailto:support@adm.app">support@adm.app</a>
+      </p>
+      <p style="margin-top: 20px; font-size: 12px; color: #999999;">
+        © 2024 ADM. Tous droits réservés.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,26 @@
+Bienvenue sur ADM !
+
+Bonjour,
+
+Merci de vous être inscrit sur ADM ! Nous sommes ravis de vous accueillir dans notre communauté de prestataires de beauté et de clients.
+
+Pour finaliser votre inscription et activer votre compte, veuillez confirmer votre adresse email en cliquant sur le lien ci-dessous :
+
+{{ .ConfirmationURL }}
+
+Que se passe-t-il ensuite ?
+Une fois votre email confirmé, vous pourrez :
+- Accéder à tous les services de la plateforme
+- Réserver des prestations de beauté
+- Gérer votre profil et vos réservations
+- Découvrir des prestataires près de chez vous
+
+Note de sécurité :
+Ce lien est valide pendant 24 heures. Si vous n'avez pas créé de compte sur ADM, vous pouvez ignorer cet email en toute sécurité.
+
+---
+ADM - Votre plateforme de beauté
+Si vous avez des questions, n'hésitez pas à nous contacter : support@adm.app
+
+© 2024 ADM. Tous droits réservés.
+

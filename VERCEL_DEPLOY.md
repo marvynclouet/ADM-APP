@@ -38,8 +38,29 @@ dist
 npm install
 ```
 
-### Étape 3 : Variables d'Environnement (Optionnel)
-Pas de variables nécessaires pour l'instant (tout est en mock data)
+### Étape 3 : Variables d'Environnement (⚠️ OBLIGATOIRE)
+
+**IMPORTANT** : L'application nécessite les variables d'environnement Supabase pour fonctionner.
+
+1. Allez dans **Settings** → **Environment Variables**
+2. Ajoutez les variables suivantes :
+
+**Variable 1 :**
+- **Name** : `EXPO_PUBLIC_SUPABASE_URL`
+- **Value** : Votre Project URL Supabase (ex: `https://xxxxx.supabase.co`)
+- **Environments** : ✅ Production, ✅ Preview, ✅ Development
+
+**Variable 2 :**
+- **Name** : `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- **Value** : Votre clé anon Supabase (commence par `eyJ...`)
+- **Environments** : ✅ Production, ✅ Preview, ✅ Development
+
+**Variable 3 (Optionnel) :**
+- **Name** : `EXPO_PUBLIC_APP_URL`
+- **Value** : Votre URL Vercel (ex: `https://adm-app.vercel.app`)
+- **Environments** : ✅ Production, ✅ Preview, ✅ Development
+
+**📖 Guide détaillé** : Voir `VERCEL_ENV_SETUP.md` pour les instructions complètes.
 
 ### Étape 4 : Déployer !
 1. Clique sur **"Deploy"**
@@ -129,8 +150,14 @@ Après déploiement, tu auras :
 npx expo export --platform web
 ```
 
-### Problème : Page blanche
-**Solution** : Vérifie que `Output Directory` est bien `dist`
+### Problème : Page blanche / Variables Supabase manquantes
+**Solution** : 
+1. Vérifie que `Output Directory` est bien `dist`
+2. **IMPORTANT** : Configure les variables d'environnement Supabase (voir `VERCEL_ENV_SETUP.md`)
+3. Les variables requises :
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+4. Après avoir ajouté les variables, redéployez le projet
 
 ### Problème : Erreur 404 sur les routes
 **Solution** : Le fichier `vercel.json` avec les rewrites est déjà configuré

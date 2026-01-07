@@ -212,6 +212,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           throw new Error('Erreur lors de l\'inscription : aucune donnée utilisateur reçue');
         }
         
+        // Si l'email n'est pas confirmé, rediriger vers l'écran de vérification
+        if (!result.emailConfirmed) {
+          if (!navigation) {
+            throw new Error('Navigation non disponible');
+          }
+          
+          navigation.reset({
+            index: 0,
+            routes: [{ 
+              name: 'EmailVerification',
+              params: { email: trimmedEmail }
+            }],
+          });
+          setIsProcessing(false);
+          return;
+        }
+        
         userData = result.user;
       }
 

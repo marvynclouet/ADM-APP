@@ -15,6 +15,7 @@ import ProviderDetailScreen from '../screens/ProviderDetailScreen';
 import BookingScreen from '../screens/BookingScreen';
 import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
 import AuthScreen from '../screens/AuthScreen';
+import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import ProviderHomeScreen from '../screens/ProviderHomeScreen';
 import ProviderMessagesScreen from '../screens/ProviderMessagesScreen';
 import ProviderBookingsScreen from '../screens/ProviderBookingsScreen';
@@ -415,6 +416,10 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen 
           name="Auth" 
           component={AuthScreen}
+        />
+        <Stack.Screen 
+          name="EmailVerification" 
+          component={EmailVerificationScreen}
         />
         <Stack.Screen 
           name="Main" 

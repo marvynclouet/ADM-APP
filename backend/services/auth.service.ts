@@ -125,7 +125,15 @@ export class AuthService {
         throw new Error('Impossible de créer ou récupérer le profil utilisateur');
       }
 
-      return { user: userData, session: authData.session };
+      // Vérifier si l'email est confirmé
+      const isEmailConfirmed = !!authData.user.email_confirmed_at;
+
+      return { 
+        user: userData, 
+        session: authData.session,
+        emailConfirmed: isEmailConfirmed,
+        email: data.email,
+      };
     } catch (error: any) {
       console.error('Erreur signUp:', error);
       throw new Error(error.message || 'Erreur lors de l\'inscription');
