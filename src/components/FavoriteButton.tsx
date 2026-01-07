@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
@@ -18,6 +18,7 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const useNative = Platform.OS !== 'web';
     if (isFavorite) {
       // Animation de "battement" quand on ajoute aux favoris
       Animated.sequence([
@@ -25,18 +26,18 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
           Animated.spring(scaleAnim, {
             toValue: 1.3,
             friction: 3,
-            useNativeDriver: true,
+            useNativeDriver: useNative,
           }),
           Animated.timing(rotateAnim, {
             toValue: 1,
             duration: 200,
-            useNativeDriver: true,
+            useNativeDriver: useNative,
           }),
         ]),
         Animated.spring(scaleAnim, {
           toValue: 1,
           friction: 3,
-          useNativeDriver: true,
+          useNativeDriver: useNative,
         }),
       ]).start();
     } else {
@@ -45,12 +46,12 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
         Animated.timing(scaleAnim, {
           toValue: 1,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: useNative,
         }),
         Animated.timing(rotateAnim, {
           toValue: 0,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: useNative,
         }),
       ]).start();
     }
@@ -58,16 +59,17 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
 
   const handlePress = () => {
     // Animation au clic
+    const useNative = Platform.OS !== 'web';
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 0.8,
         duration: 100,
-        useNativeDriver: true,
+        useNativeDriver: useNative,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         friction: 3,
-        useNativeDriver: true,
+        useNativeDriver: useNative,
       }),
     ]).start();
 

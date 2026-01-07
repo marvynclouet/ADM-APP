@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, ActivityIndicator, View, Alert } from 'react-native';
+import { AuthService } from '../../backend/services/auth.service';
+import { COLORS } from '../constants/colors';
+import { SERVICE_PROVIDERS } from '../constants/mockData';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import BookingsScreen from '../screens/BookingsScreen';
@@ -17,9 +20,6 @@ import ProviderMessagesScreen from '../screens/ProviderMessagesScreen';
 import ProviderBookingsScreen from '../screens/ProviderBookingsScreen';
 import ProviderShopScreen from '../screens/ProviderShopScreen';
 import CustomTabBar from '../components/CustomTabBar';
-import { COLORS } from '../constants/colors';
-import { SERVICE_PROVIDERS } from '../constants/mockData';
-import { Alert } from 'react-native';
 import MessagesScreen from '../screens/MessagesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
@@ -33,6 +33,8 @@ import ProviderPremiumScreen from '../screens/ProviderPremiumScreen';
 import ProviderEmergencyScreen from '../screens/ProviderEmergencyScreen';
 import EmergencyBookingScreen from '../screens/EmergencyBookingScreen';
 import SelectProviderScreen from '../screens/SelectProviderScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import { UsersService } from '../../backend/services/users.service';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -43,17 +45,58 @@ const HomeScreenWrapper: React.FC<any> = ({ navigation }) => {
     navigation.navigate('Search');
   };
 
-  const handleNavigateToProvider = (providerId: string) => {
-    // Trouver le prestataire par ID
-    const provider = SERVICE_PROVIDERS.find(p => p.id === providerId);
-    if (provider) {
-      // Naviguer vers la page de détail du prestataire dans SearchStack
-      navigation.navigate('Search', { 
-        screen: 'ProviderDetail',
-        params: { provider }
+  const handleNavigateToProvider = async (providerId: string) => {
+    try {
+      // Charger le prestataire depuis Supabase
+      const providers = await UsersService.getProviders({
+        limit: 100, // Augmenter la limite pour trouver le bon prestataire
       });
-    } else {
-      // Fallback vers la recherche
+      const provider = providers.find((p: any) => p.id === providerId);
+      
+      if (provider) {
+        // Transformer au format ServiceProvider
+        const transformedProvider = {
+          id: provider.id,
+          name: `${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email || 'Prestataire',
+          firstName: provider.first_name,
+          lastName: provider.last_name,
+          email: provider.email,
+          phone: provider.phone,
+          avatar: provider.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(provider.email || provider.id)}&backgroundColor=b6e3f4`,
+          isProvider: provider.is_provider,
+          rating: provider.rating || 0,
+          reviewCount: provider.review_count || 0,
+          city: provider.city,
+          activityZone: provider.activity_zone,
+          description: provider.bio || provider.description,
+          mainSkills: provider.main_skills || [],
+          isPremium: provider.is_premium || false,
+          acceptsEmergency: provider.accepts_emergency || false,
+          location: {
+            latitude: provider.latitude || 0,
+            longitude: provider.longitude || 0,
+            address: provider.address || provider.city || '',
+            city: provider.city || '',
+            postalCode: provider.postal_code || '',
+          },
+          services: [],
+          experience: provider.experience || 0,
+          certifications: [],
+          availability: [],
+          priceRange: { min: 0, max: 0 },
+        };
+        
+        // Naviguer vers la boutique du prestataire (ProviderDetailScreen)
+        navigation.navigate('Search', { 
+          screen: 'ProviderDetail',
+          params: { provider: transformedProvider }
+        });
+      } else {
+        // Fallback vers la recherche
+        navigation.navigate('Search');
+      }
+    } catch (error) {
+      console.error('Erreur chargement prestataire:', error);
       navigation.navigate('Search');
     }
   };
@@ -131,11 +174,16 @@ const ProviderHomeScreenWrapper: React.FC<any> = ({ navigation }) => {
     navigation.navigate('ProviderReviews');
   };
 
-  const handleLogout = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Auth' }],
-    });
+  const handleLogout = async () => {
+    try {
+      await AuthService.signOut();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Auth' }],
+      });
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Erreur lors de la déconnexion');
+    }
   };
 
   return (
@@ -270,7 +318,7 @@ const MainTabs = () => {
       />
       <Tab.Screen 
         name="Profil" 
-        component={(props) => <ProfileScreen {...props} />}
+        component={ProfileScreen}
         options={{
           tabBarLabel: 'Profil',
           tabBarTestID: 'profile-tab',
@@ -289,6 +337,7 @@ const MainStack = () => {
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
       <Stack.Screen name="SelectProvider" component={SelectProviderScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
     </Stack.Navigator>
   );
 };
@@ -314,34 +363,66 @@ const ProviderModeStack = () => {
 };
 
 const AppNavigator: React.FC = () => {
-  console.log('AppNavigator rendering');
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkAuthAndRedirect();
+  }, []);
+
+  const checkAuthAndRedirect = async () => {
+    try {
+      // Vérifier si l'utilisateur est authentifié
+      const isAuthenticated = await AuthService.isAuthenticated();
+      
+      if (isAuthenticated) {
+        // Récupérer les données de l'utilisateur
+        const userData = await AuthService.getCurrentUser();
+        
+        if (userData) {
+          // Rediriger selon le type d'utilisateur
+          const isProvider = userData.is_provider || false;
+          setInitialRoute(isProvider ? 'Provider' : 'Main');
+        } else {
+          setInitialRoute('Auth');
+        }
+      } else {
+        setInitialRoute('Auth');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification de l\'authentification:', error);
+      setInitialRoute('Auth');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Afficher un loader pendant la vérification
+  if (isLoading || !initialRoute) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator 
         screenOptions={{ headerShown: false }}
-        initialRouteName="Auth"
+        initialRouteName={initialRoute}
       >
         <Stack.Screen 
           name="Auth" 
-          component={(props) => {
-            console.log('AuthScreen props:', props);
-            return <AuthScreen {...props} />;
-          }} 
+          component={AuthScreen}
         />
         <Stack.Screen 
           name="Main" 
-          component={(props) => {
-            console.log('MainStack props:', props);
-            return <MainStack {...props} />;
-          }} 
+          component={MainStack}
         />
         <Stack.Screen 
           name="Provider" 
-          component={(props) => {
-            console.log('ProviderModeStack props:', props);
-            return <ProviderModeStack {...props} />;
-          }} 
+          component={ProviderModeStack}
         />
       </Stack.Navigator>
     </NavigationContainer>

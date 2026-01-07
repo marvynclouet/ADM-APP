@@ -149,7 +149,11 @@ const ProviderMessagesScreen: React.FC<ProviderMessagesScreenProps> = ({ navigat
       </View>
 
       {/* Liste des conversations */}
-      <ScrollView style={styles.conversationsList} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.conversationsList} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {filteredConversations.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubble-outline" size={64} color={COLORS.textSecondary} />
@@ -300,6 +304,10 @@ const styles = StyleSheet.create({
   },
   conversationsList: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,

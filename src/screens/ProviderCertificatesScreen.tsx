@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,7 +55,7 @@ const ProviderCertificatesScreen: React.FC<ProviderCertificatesScreenProps> = ({
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images) || 'images',
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -139,7 +140,11 @@ const ProviderCertificatesScreen: React.FC<ProviderCertificatesScreenProps> = ({
       </LinearGradient>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {certificates.length === 0 ? (
           <EmptyState
             icon="school-outline"
@@ -278,16 +283,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   certificateCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   certificateImage: {
     width: '100%',

@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import { AuthService } from '../../backend/services/auth.service';
+import { supabase } from '../../backend/supabase/config';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface ProfileScreenProps {
   navigation?: any;
@@ -12,32 +16,158 @@ interface ProfileScreenProps {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { toast, showSuccess, showInfo, showWarning, hideToast } = useToast();
-  const user = {
-    firstName: 'Marie',
-    lastName: 'Dupont',
-    name: 'Marie Dupont',
-    email: 'marie.dupont@email.com',
-    phone: '+33 6 12 34 56 78',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
-    age: 28,
-    ageRange: '25-30',
-    city: 'Paris',
-    neighborhood: 'Paris 15e',
-    memberSince: '2023',
-    totalBookings: 12,
-    favoriteProviders: 5,
-    favoriteServiceTypes: ['coiffure', 'maquillage'],
-    preferredProviderGender: 'any' as 'male' | 'female' | 'any',
-    priceRange: { min: 30, max: 100 },
-    loyaltyPoints: 150,
-    instagram: '@marie_dupont',
-    tiktok: '',
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    favoriteProviders: 0,
+    loyaltyPoints: 0,
+  });
+  const [favoriteServiceTypes, setFavoriteServiceTypes] = useState<string[]>([]);
+
+  // Recharger les données quand l'écran est focus (après retour de EditProfile)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserData();
+    }, [])
+  );
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      
+      // Récupérer l'utilisateur actuel
+      const userData = await AuthService.getCurrentUser();
+      
+      if (userData) {
+        setUser(userData);
+        
+        // Charger les statistiques et préférences
+        await Promise.all([
+          loadStats(userData.id),
+          loadFavoriteServices(userData.id),
+        ]);
+      } else {
+        // Si pas d'utilisateur, rediriger vers l'auth
+        if (navigation) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Auth' }],
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement profil:', error);
+      showWarning('Erreur lors du chargement du profil');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async (userId: string) => {
+    try {
+      // Compter les réservations
+      const { count: bookingsCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      // Compter les favoris
+      const { count: favoritesCount } = await supabase
+        .from('favorites')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      setStats({
+        totalBookings: bookingsCount || 0,
+        favoriteProviders: favoritesCount || 0,
+        loyaltyPoints: 0, // À implémenter dans la BDD si nécessaire
+      });
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
+    }
+  };
+
+  const loadFavoriteServices = async (userId: string) => {
+    try {
+      // Récupérer les favoris avec les catégories
+      const { data: favorites } = await supabase
+        .from('favorites')
+        .select(`
+          category_id,
+          category:service_categories(name)
+        `)
+        .eq('user_id', userId);
+
+      if (favorites) {
+        // Extraire les noms de catégories uniques
+        const categories = favorites
+          .map((fav: any) => fav.category?.name)
+          .filter((name: string) => name)
+          .filter((name: string, index: number, self: string[]) => self.indexOf(name) === index);
+        
+        setFavoriteServiceTypes(categories);
+      }
+    } catch (error) {
+      console.error('Erreur chargement services favoris:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement du profil..." />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Aucun utilisateur connecté</Text>
+      </View>
+    );
+  }
+
+  // Construire le nom complet
+  const fullName = user.first_name && user.last_name 
+    ? `${user.first_name} ${user.last_name}`
+    : user.first_name || user.last_name || user.email?.split('@')[0] || 'Utilisateur';
+  
+  // Construire la localisation
+  const location = user.neighborhood 
+    ? user.neighborhood 
+    : user.city || '';
+
+  // Fourchette de prix (à implémenter dans la BDD si nécessaire)
+  const priceRange = { min: 30, max: 100 }; // Valeur par défaut - à récupérer depuis la BDD
+
+  // Réseaux sociaux
+  const instagram = user.instagram || '';
+  const tiktok = user.tiktok || '';
+
+  const handleLogout = async () => {
+    try {
+      await AuthService.signOut();
+      if (navigation) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }],
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Erreur lors de la déconnexion');
+    }
   };
 
   const handleMenuPress = (action: string) => {
     switch (action) {
       case 'edit':
-        showInfo('Modification du profil à venir');
+        if (navigation) {
+          navigation.navigate('EditProfile');
+        } else {
+          showInfo('Navigation non disponible');
+        }
         break;
       case 'notifications':
         showInfo('Paramètres de notifications à venir');
@@ -56,14 +186,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         break;
       case 'logout':
         showWarning('Déconnexion en cours...');
-        setTimeout(() => {
-          if (navigation) {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
-          }
-        }, 1000);
+        handleLogout();
         break;
       default:
         showInfo('Fonctionnalité à venir');
@@ -116,7 +239,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <Toast
         visible={toast.visible}
         message={toast.message}
@@ -135,15 +262,21 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       {/* Section profil utilisateur */}
       <View style={styles.profileSection}>
         <View style={styles.profileHeader}>
-          <Image source={{ uri: user.avatar }} style={styles.profileAvatar} />
+          {user.avatar_url ? (
+            <Image source={{ uri: user.avatar_url }} style={styles.profileAvatar} />
+          ) : (
+            <View style={styles.profileAvatarPlaceholder}>
+              <Ionicons name="person" size={40} color={COLORS.textSecondary} />
+            </View>
+          )}
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileName}>{fullName}</Text>
             <Text style={styles.profileEmail}>{user.email}</Text>
             {user.phone && <Text style={styles.profilePhone}>{user.phone}</Text>}
-            {user.neighborhood && (
+            {location && (
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.profileLocation}>{user.neighborhood}</Text>
+                <Text style={styles.profileLocation}>{location}</Text>
               </View>
             )}
           </View>
@@ -153,17 +286,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       {/* Statistiques utilisateur */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.totalBookings}</Text>
+          <Text style={styles.statNumber}>{stats.totalBookings}</Text>
           <Text style={styles.statLabel}>Réservations</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.favoriteProviders}</Text>
+          <Text style={styles.statNumber}>{stats.favoriteProviders}</Text>
           <Text style={styles.statLabel}>Favoris</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.loyaltyPoints}</Text>
+          <Text style={styles.statNumber}>{stats.loyaltyPoints}</Text>
           <Text style={styles.statLabel}>Points</Text>
         </View>
       </View>
@@ -171,11 +304,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       {/* Préférences */}
       <View style={styles.preferencesSection}>
         <Text style={styles.sectionTitle}>Préférences</Text>
-        {user.favoriteServiceTypes && user.favoriteServiceTypes.length > 0 && (
+        {favoriteServiceTypes.length > 0 && (
           <View style={styles.preferenceItem}>
             <Text style={styles.preferenceLabel}>Services favoris</Text>
             <View style={styles.tagsContainer}>
-              {user.favoriteServiceTypes.map((service, index) => (
+              {favoriteServiceTypes.map((service, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{service}</Text>
                 </View>
@@ -183,30 +316,30 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
           </View>
         )}
-        {user.priceRange && (
+        {priceRange && priceRange.min && priceRange.max && (
           <View style={styles.preferenceItem}>
             <Text style={styles.preferenceLabel}>Fourchette de prix</Text>
             <Text style={styles.preferenceValue}>
-              {user.priceRange.min}€ - {user.priceRange.max}€
+              {priceRange.min}€ - {priceRange.max}€
             </Text>
           </View>
         )}
       </View>
 
       {/* Réseaux sociaux */}
-      {(user.instagram || user.tiktok) && (
+      {(instagram || tiktok) && (
         <View style={styles.socialSection}>
           <Text style={styles.sectionTitle}>Réseaux sociaux</Text>
-          {user.instagram && (
+          {instagram && (
             <View style={styles.socialItem}>
               <Ionicons name="logo-instagram" size={20} color={COLORS.primary} />
-              <Text style={styles.socialText}>{user.instagram}</Text>
+              <Text style={styles.socialText}>{instagram}</Text>
             </View>
           )}
-          {user.tiktok && (
+          {tiktok && (
             <View style={styles.socialItem}>
               <Ionicons name="musical-notes-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.socialText}>{user.tiktok}</Text>
+              <Text style={styles.socialText}>{tiktok}</Text>
             </View>
           )}
         </View>
@@ -253,6 +386,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   header: {
     height: 150, // Fixed height for the header
     justifyContent: 'center',
@@ -281,6 +418,25 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginRight: 15,
+  },
+  profileAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 15,
+    backgroundColor: COLORS.lightGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
   profileInfo: {
     flex: 1,

@@ -173,3 +173,9 @@ Pour la production :
 - [ ] Ajouter la gestion des paiements (Stripe)
 - [ ] Créer des fonctions Supabase pour la logique métier complexe
 
+
+
+
+
+
+

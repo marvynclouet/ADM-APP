@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import FormField from '../components/FormField';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Logo from '../components/Logo';
+import { AuthService, SignUpData, SignInData } from '../../backend/services/auth.service';
 
 interface AuthScreenProps {
   navigation?: any;
@@ -17,7 +18,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,13 +29,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
+    // useNativeDriver n'est pas supporté sur web
+    const canUseNativeDriver = Platform.OS !== 'web';
+    
     if (isProcessing) {
       // Démarrer l'animation de rotation
       const rotateAnimation = Animated.loop(
         Animated.timing(rotateAnim, {
           toValue: 1,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver: canUseNativeDriver,
         })
       );
       
@@ -41,7 +46,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: canUseNativeDriver,
         }),
         rotateAnimation,
       ]).start();
@@ -53,7 +58,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }).start();
     }
   }, [isProcessing]);
@@ -63,75 +68,229 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     outputRange: ['0deg', '360deg'],
   });
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    // Au moins 6 caractères
+    return password.length >= 6;
+  };
+
   const isFormValid = () => {
-    // Validation simple : au moins un caractère dans email et mot de passe
     if (isLogin) {
-      return email.trim() !== '' && password.trim() !== '';
+      return email.trim() !== '' && password.trim() !== '' && validateEmail(email.trim());
     } else {
-      return name.trim() !== '' && email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '';
+      return (
+        firstName.trim() !== '' &&
+        lastName.trim() !== '' &&
+        email.trim() !== '' &&
+        validateEmail(email.trim()) &&
+        password.trim() !== '' &&
+        validatePassword(password) &&
+        confirmPassword.trim() !== '' &&
+        password === confirmPassword
+      );
     }
   };
 
-  const handleAuth = () => {
+  const handleAuth = async () => {
     // Protection contre les clics multiples
     if (isProcessing) {
       console.log('Already processing, ignoring click');
       return;
     }
 
-    console.log('Auth button pressed');
-    console.log('Navigation object:', navigation);
-    console.log('User type:', userType);
-    
+    // Validation stricte AVANT tout traitement
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirmPassword = confirmPassword.trim();
+
+    console.log('🔍 Validation - Email:', trimmedEmail, 'Password:', trimmedPassword ? '***' : 'VIDE', 'isLogin:', isLogin);
+
+    // Validation des champs obligatoires
+    if (isLogin) {
+      // Connexion : email et mot de passe requis
+      if (!trimmedEmail) {
+        Alert.alert('Erreur', 'Veuillez entrer votre adresse email');
+        return;
+      }
+      if (!trimmedPassword) {
+        Alert.alert('Erreur', 'Veuillez entrer votre mot de passe');
+        return;
+      }
+      if (!validateEmail(trimmedEmail)) {
+        Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
+        return;
+      }
+    } else {
+      // Inscription : tous les champs requis
+      const trimmedFirstName = firstName.trim();
+      const trimmedLastName = lastName.trim();
+      
+      if (!trimmedFirstName) {
+        Alert.alert('Erreur', 'Veuillez entrer votre prénom');
+        return;
+      }
+      if (!trimmedLastName) {
+        Alert.alert('Erreur', 'Veuillez entrer votre nom');
+        return;
+      }
+      if (!trimmedEmail) {
+        Alert.alert('Erreur', 'Veuillez entrer votre adresse email');
+        return;
+      }
+      if (!validateEmail(trimmedEmail)) {
+        Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
+        return;
+      }
+      if (!trimmedPassword) {
+        Alert.alert('Erreur', 'Veuillez entrer un mot de passe');
+        return;
+      }
+      if (!validatePassword(trimmedPassword)) {
+        Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+        return;
+      }
+      if (!trimmedConfirmPassword) {
+        Alert.alert('Erreur', 'Veuillez confirmer votre mot de passe');
+        return;
+      }
+      if (trimmedPassword !== trimmedConfirmPassword) {
+        Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+        return;
+      }
+    }
+
+    // Si on arrive ici, tous les champs sont valides
     setIsProcessing(true);
 
-    // Délai pour afficher l'animation de chargement
-    setTimeout(() => {
-      // Navigation directe sans alert pour tester
-      if (navigation) {
-        console.log('Attempting to navigate...');
-        try {
-          // Naviguer vers le bon mode selon le type d'utilisateur
-          if (userType === 'provider') {
-            console.log('Navigating to Provider mode');
-            navigation.navigate('Provider');
-          } else {
-            console.log('Navigating to Client mode');
-            navigation.navigate('Main');
-          }
-          console.log('Navigation successful');
-        } catch (error) {
-          console.log('Navigation error:', error);
-          Alert.alert('Erreur', 'Erreur de navigation: ' + error);
-          setIsProcessing(false);
+    try {
+      let userData;
+
+      if (isLogin) {
+        // Connexion
+        const signInData: SignInData = {
+          email: trimmedEmail,
+          password: trimmedPassword,
+        };
+
+        console.log('Tentative de connexion avec:', { email: trimmedEmail, hasPassword: !!trimmedPassword });
+        const result = await AuthService.signIn(signInData);
+        
+        if (!result || !result.user) {
+          throw new Error('Erreur lors de la connexion : aucune donnée utilisateur reçue');
         }
+        
+        userData = result.user;
       } else {
-        console.log('Navigation object is null or undefined');
-        Alert.alert('Erreur', 'Navigation non disponible');
-        setIsProcessing(false);
+        // Inscription
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+
+        if (!trimmedFirstName) {
+          throw new Error('Le prénom est requis');
+        }
+
+        if (!trimmedLastName) {
+          throw new Error('Le nom est requis');
+        }
+
+        const signUpData: SignUpData = {
+          email: trimmedEmail,
+          password: trimmedPassword,
+          firstName: trimmedFirstName,
+          lastName: trimmedLastName,
+          isProvider: userType === 'provider',
+        };
+
+        console.log('Tentative d\'inscription avec:', { email: trimmedEmail, hasPassword: !!trimmedPassword, isProvider: userType === 'provider' });
+        const result = await AuthService.signUp(signUpData);
+        
+        if (!result || !result.user) {
+          throw new Error('Erreur lors de l\'inscription : aucune donnée utilisateur reçue');
+        }
+        
+        userData = result.user;
+      }
+
+      // Vérifier que nous avons bien un utilisateur avant de rediriger
+      if (!userData) {
+        throw new Error('Aucune donnée utilisateur disponible après authentification');
+      }
+
+      // Vérifier le type d'utilisateur et rediriger
+      if (!navigation) {
+        throw new Error('Navigation non disponible');
+      }
+
+      const isProvider = userData.is_provider || false;
+      console.log('Authentification réussie, redirection vers:', isProvider ? 'Provider' : 'Main');
+      
+      // Utiliser reset pour éviter de revenir en arrière
+      navigation.reset({
+        index: 0,
+        routes: [{ 
+          name: isProvider ? 'Provider' : 'Main' 
+        }],
+      });
+    } catch (error: any) {
+      console.error('Erreur authentification:', error);
+      
+      // Messages d'erreur plus clairs
+      let errorMessage = 'Une erreur est survenue lors de l\'authentification';
+      
+      if (error.message) {
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email ou mot de passe incorrect';
+        } else if (error.message.includes('User already registered')) {
+          errorMessage = 'Cet email est déjà utilisé. Connectez-vous ou utilisez un autre email';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+        } else if (error.message.includes('Password')) {
+          errorMessage = 'Le mot de passe doit contenir au moins 6 caractères';
+        } else {
+          errorMessage = error.message;
+        }
       }
       
-      // Reset processing state après la navigation
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 500);
-    }, 1500);
+      Alert.alert('Erreur', errorMessage);
+      setIsProcessing(false);
+    }
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert(
-      'Mot de passe oublié',
-      'Un email de réinitialisation sera envoyé à votre adresse email.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Simulation d'envoi d'email
-            Alert.alert('Email envoyé', 'Vérifiez votre boîte de réception.');
+  const handleForgotPassword = async () => {
+    if (!email.trim() || !validateEmail(email.trim())) {
+      Alert.alert(
+        'Email requis',
+        'Veuillez entrer votre adresse email pour réinitialiser votre mot de passe.',
+        [
+          {
+            text: 'OK',
           },
-        },
-      ]
-    );
+        ]
+      );
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await AuthService.resetPassword(email.trim());
+      Alert.alert(
+        'Email envoyé',
+        'Un email de réinitialisation a été envoyé à votre adresse email. Vérifiez votre boîte de réception.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('Erreur resetPassword:', error);
+      Alert.alert(
+        'Erreur',
+        error.message || 'Impossible d\'envoyer l\'email de réinitialisation'
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const toggleAuthMode = () => {
@@ -139,7 +298,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setName('');
+    setFirstName('');
+    setLastName('');
   };
 
   const toggleUserType = (type: 'client' | 'provider') => {
@@ -225,19 +385,34 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         {/* Formulaire */}
         <View style={styles.formSection}>
           {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Nom complet *</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Votre nom complet"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Prénom *</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Votre prénom"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
-            </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Nom *</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Votre nom"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+            </>
           )}
 
           <View style={styles.inputContainer}>
@@ -261,7 +436,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
               <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
               <TextInput
                 style={styles.textInput}
-                placeholder="Votre mot de passe"
+                placeholder={isLogin ? "Votre mot de passe" : "Au moins 6 caractères"}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -275,6 +450,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
                 />
               </TouchableOpacity>
             </View>
+            {!isLogin && password.length > 0 && (
+              <Text style={[
+                styles.passwordHint,
+                validatePassword(password) ? styles.passwordHintValid : styles.passwordHintInvalid
+              ]}>
+                {validatePassword(password) 
+                  ? '✓ Mot de passe valide' 
+                  : 'Le mot de passe doit contenir au moins 6 caractères'}
+              </Text>
+            )}
           </View>
 
           {!isLogin && (
@@ -565,6 +750,17 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '500',
   },
+  passwordHint: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  passwordHintValid: {
+    color: '#10b981',
+  },
+  passwordHintInvalid: {
+    color: '#ef4444',
+  },
   providerAccessSection: {
     marginTop: 24,
     marginBottom: 16,
@@ -595,10 +791,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 2,
   },
   providerAccessButtonText: {

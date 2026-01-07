@@ -1,115 +1,141 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, TextInput, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, TextInput, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import NotificationBadge from '../components/NotificationBadge';
 import EmptyState from '../components/EmptyState';
+import { AuthService } from '../../backend/services/auth.service';
+import { BookingsService } from '../../backend/services/bookings.service';
+import LoadingSpinner from '../components/LoadingSpinner';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface ProviderBookingsScreenProps {
   navigation?: any;
 }
 
 const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigation }) => {
-  const [selectedTab, setSelectedTab] = useState<'upcoming' | 'pending' | 'completed' | 'cancelled'>('upcoming');
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'>('pending');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [newBookingsCount, setNewBookingsCount] = useState(0);
   
   // Animation pour notifications
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [newBookingsCount] = useState(3);
 
-  const bookings = [
-    {
-      id: '1',
-      clientName: 'Marie Dupont',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie&backgroundColor=b6e3f4',
-      service: 'Manucure',
-      date: '2024-01-15',
-      time: '14:00',
-      duration: 60,
-      price: 35,
-      status: 'upcoming',
-      address: '123 Rue de la Paix, Paris'
-    },
-    {
-      id: '2',
-      clientName: 'Julie Martin',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julie&backgroundColor=b6e3f4',
-      service: 'Coiffure',
-      date: '2024-01-15',
-      time: '16:30',
-      duration: 90,
-      price: 45,
-      status: 'pending',
-      address: '456 Avenue des Champs, Paris'
-    },
-    {
-      id: '3',
-      clientName: 'Sarah Bernard',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
-      service: 'Massage',
-      date: '2024-01-14',
-      time: '10:00',
-      duration: 120,
-      price: 80,
-      status: 'completed',
-      address: '789 Boulevard Saint-Germain, Paris'
-    },
-    {
-      id: '4',
-      clientName: 'Emma Wilson',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma&backgroundColor=b6e3f4',
-      service: 'Manucure',
-      date: '2024-01-13',
-      time: '15:00',
-      duration: 60,
-      price: 35,
-      status: 'cancelled',
-      address: '321 Rue du Commerce, Paris'
+  // Charger les réservations
+  const loadBookings = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      const userData = await AuthService.getCurrentUser();
+      if (!userData || !userData.is_provider) {
+        Alert.alert('Erreur', 'Vous n\'êtes pas un prestataire');
+        navigation?.goBack();
+        return;
+      }
+
+      const bookingsData = await BookingsService.getProviderBookings(userData.id);
+      
+      // Transformer les données
+      const transformedBookings = (bookingsData || []).map((booking: any) => {
+        const clientName = booking.user 
+          ? `${booking.user.first_name || ''} ${booking.user.last_name || ''}`.trim() || booking.user.email || 'Client'
+          : 'Client';
+        const clientAvatar = booking.user?.avatar_url || 
+          `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientName}&backgroundColor=b6e3f4`;
+        
+        // Utiliser les statuts directement depuis la base de données
+        const status = booking.status || 'pending';
+
+        return {
+          id: booking.id,
+          clientName,
+          clientAvatar,
+          service: booking.service?.name || 'Service',
+          date: booking.booking_date,
+          time: booking.booking_time,
+          duration: booking.duration_minutes || 0,
+          price: parseFloat(booking.total_price) || 0,
+          status: status as 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show',
+          address: booking.user?.address || 'Adresse non renseignée',
+        };
+      });
+
+      setBookings(transformedBookings);
+      
+      // Compter les réservations en attente
+      const pendingCount = transformedBookings.filter(b => b.status === 'pending').length;
+      setNewBookingsCount(pendingCount);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des réservations:', error);
+      showError(error.message || 'Erreur lors du chargement des réservations');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  }, [navigation, showError]);
+
+  // Recharger les données quand l'écran est focus
+  useFocusEffect(
+    useCallback(() => {
+      loadBookings();
+    }, [loadBookings])
+  );
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   const filteredBookings = bookings.filter(booking => booking.status === selectedTab);
 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'upcoming': return COLORS.primary;
       case 'pending': return COLORS.warning;
-      case 'completed': return COLORS.success;
+      case 'confirmed': return COLORS.primary; // En cours
+      case 'completed': return COLORS.success; // Terminé
       case 'cancelled': return COLORS.error;
+      case 'no_show': return COLORS.textSecondary; // Absent
       default: return COLORS.textSecondary;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'upcoming': return 'À venir';
       case 'pending': return 'En attente';
+      case 'confirmed': return 'En cours';
       case 'completed': return 'Terminé';
       case 'cancelled': return 'Annulé';
+      case 'no_show': return 'Absent';
       default: return status;
     }
   };
 
   useEffect(() => {
+    // useNativeDriver n'est pas supporté sur web
+    const canUseNativeDriver = Platform.OS !== 'web';
+    
     if (newBookingsCount > 0 && selectedTab === 'pending') {
       const pulseAnimation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.2,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: canUseNativeDriver,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: canUseNativeDriver,
           }),
         ])
       );
@@ -117,12 +143,57 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
     }
   }, [newBookingsCount, selectedTab]);
 
-  const handleBookingAction = (booking: any, action: string) => {
+  const handleBookingAction = async (booking: any, action: string) => {
     switch (action) {
       case 'accept':
-        Alert.alert('Confirmer', `Accepter la réservation de ${booking.clientName} ?`, [
+        Alert.alert('Confirmer', `Confirmer la réservation de ${booking.clientName} ? Elle passera en "En cours".`, [
           { text: 'Annuler', style: 'cancel' },
-          { text: 'Accepter', onPress: () => Alert.alert('Succès', 'Réservation acceptée') }
+          { 
+            text: 'Confirmer', 
+            onPress: async () => {
+              try {
+                await BookingsService.updateBookingStatus(booking.id, 'confirmed');
+                showSuccess('Réservation confirmée - Statut: En cours');
+                await loadBookings();
+              } catch (error: any) {
+                showError(error.message || 'Erreur lors de la confirmation de la réservation');
+              }
+            }
+          }
+        ]);
+        break;
+      case 'complete':
+        Alert.alert('Terminer', `Marquer la réservation de ${booking.clientName} comme terminée ?`, [
+          { text: 'Annuler', style: 'cancel' },
+          { 
+            text: 'Terminer', 
+            onPress: async () => {
+              try {
+                await BookingsService.updateBookingStatus(booking.id, 'completed');
+                showSuccess('Réservation marquée comme terminée');
+                await loadBookings();
+              } catch (error: any) {
+                showError(error.message || 'Erreur lors de la mise à jour');
+              }
+            }
+          }
+        ]);
+        break;
+      case 'no_show':
+        Alert.alert('Client absent', `Le client ${booking.clientName} ne s'est pas présenté ?`, [
+          { text: 'Annuler', style: 'cancel' },
+          { 
+            text: 'Confirmer', 
+            onPress: async () => {
+              try {
+                await BookingsService.updateBookingStatus(booking.id, 'no_show');
+                showSuccess('Réservation marquée comme "Client absent"');
+                await loadBookings();
+              } catch (error: any) {
+                showError(error.message || 'Erreur lors de la mise à jour');
+              }
+            }
+          }
         ]);
         break;
       case 'reject':
@@ -136,9 +207,11 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
         setShowEditModal(true);
         break;
       case 'message':
+        // TODO: Naviguer vers l'écran de messagerie
         Alert.alert('Message', `Envoyer un message à ${booking.clientName}`);
         break;
       case 'call':
+        // TODO: Implémenter l'appel
         Alert.alert('Appel', `Appeler ${booking.clientName}`);
         break;
       case 'details':
@@ -149,13 +222,66 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
     }
   };
 
+  const handleRejectBooking = async () => {
+    if (!selectedBooking) return;
+    
+    try {
+      await BookingsService.updateBookingStatus(selectedBooking.id, 'cancelled', rejectReason);
+      showSuccess('Réservation refusée avec succès');
+      setShowRejectModal(false);
+      setRejectReason('');
+      await loadBookings();
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors du refus de la réservation');
+    }
+  };
+
+  const handleUpdateBooking = async () => {
+    if (!selectedBooking || !newDate || !newTime) {
+      Alert.alert('Erreur', 'Veuillez remplir la date et l\'heure');
+      return;
+    }
+
+    // Valider le format de la date
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(newDate)) {
+      Alert.alert('Erreur', 'Format de date invalide. Utilisez YYYY-MM-DD');
+      return;
+    }
+
+    // Valider le format de l'heure
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(newTime)) {
+      Alert.alert('Erreur', 'Format d\'heure invalide. Utilisez HH:MM');
+      return;
+    }
+
+    try {
+      await BookingsService.updateBookingDateTime(selectedBooking.id, newDate, newTime);
+      showSuccess('Réservation modifiée avec succès');
+      setShowEditModal(false);
+      await loadBookings();
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la modification de la réservation');
+    }
+  };
+
   const handleBack = () => {
     if (navigation) {
       navigation.goBack();
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement des réservations..." />
+      </View>
+    );
+  }
+
   return (
+    <>
     <View style={styles.container}>
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
@@ -173,25 +299,30 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
       </LinearGradient>
 
       {/* Onglets */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'upcoming' && styles.tabActive]}
-          onPress={() => setSelectedTab('upcoming')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'upcoming' && styles.tabTextActive]}>À venir</Text>
-        </TouchableOpacity>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsContainer}
+        contentContainerStyle={styles.tabsContent}
+      >
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'pending' && styles.tabActive]}
           onPress={() => setSelectedTab('pending')}
         >
           <View style={styles.tabWithBadge}>
             <Text style={[styles.tabText, selectedTab === 'pending' && styles.tabTextActive]}>En attente</Text>
-            {newBookingsCount > 0 && (
+            {newBookingsCount > 0 && selectedTab === 'pending' && (
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <NotificationBadge count={newBookingsCount} size="small" />
               </Animated.View>
             )}
           </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'confirmed' && styles.tabActive]}
+          onPress={() => setSelectedTab('confirmed')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'confirmed' && styles.tabTextActive]}>En cours</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
@@ -205,19 +336,30 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
         >
           <Text style={[styles.tabText, selectedTab === 'cancelled' && styles.tabTextActive]}>Annulées</Text>
         </TouchableOpacity>
-      </View>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'no_show' && styles.tabActive]}
+          onPress={() => setSelectedTab('no_show')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'no_show' && styles.tabTextActive]}>Absents</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Liste des réservations */}
-      <ScrollView style={styles.bookingsList} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.bookingsList} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {filteredBookings.length === 0 ? (
           <EmptyState
             icon="calendar-outline"
             title="Aucune réservation"
             description={
-              selectedTab === 'upcoming' ? 'Aucune réservation à venir' :
               selectedTab === 'pending' ? 'Aucune réservation en attente' :
+              selectedTab === 'confirmed' ? 'Aucune réservation en cours' :
               selectedTab === 'completed' ? 'Aucune réservation terminée' :
-              'Aucune réservation annulée'
+              selectedTab === 'cancelled' ? 'Aucune réservation annulée' :
+              'Aucun client absent'
             }
           />
         ) : (
@@ -267,7 +409,7 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
                       onPress={() => handleBookingAction(booking, 'accept')}
                     >
                       <Ionicons name="checkmark" size={16} color={COLORS.white} />
-                      <Text style={styles.acceptButtonText}>Accepter</Text>
+                      <Text style={styles.acceptButtonText}>Confirmer</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.rejectButton]}
@@ -275,6 +417,25 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
                     >
                       <Ionicons name="close" size={16} color={COLORS.error} />
                       <Text style={styles.rejectButtonText}>Refuser</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                
+                {booking.status === 'confirmed' && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: COLORS.success }]}
+                      onPress={() => handleBookingAction(booking, 'complete')}
+                    >
+                      <Ionicons name="checkmark-circle" size={16} color={COLORS.white} />
+                      <Text style={styles.acceptButtonText}>Terminer</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: COLORS.textSecondary }]}
+                      onPress={() => handleBookingAction(booking, 'no_show')}
+                    >
+                      <Ionicons name="person-remove" size={16} color={COLORS.white} />
+                      <Text style={styles.acceptButtonText}>Absent</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -299,7 +460,8 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
                 >
                   <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
                 </TouchableOpacity>
-                {booking.status === 'upcoming' && (
+                
+                {(booking.status === 'confirmed' || booking.status === 'pending') && (
                   <TouchableOpacity
                     style={styles.actionButton}
                     onPress={() => handleBookingAction(booking, 'edit')}
@@ -346,11 +508,7 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={() => {
-                  Alert.alert('Succès', 'Réservation refusée' + (rejectReason ? `\nRaison: ${rejectReason}` : ''));
-                  setShowRejectModal(false);
-                  setRejectReason('');
-                }}
+                onPress={handleRejectBooking}
               >
                 <Text style={styles.modalButtonTextConfirm}>Refuser</Text>
               </TouchableOpacity>
@@ -398,10 +556,7 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={() => {
-                  Alert.alert('Succès', 'Réservation modifiée avec succès');
-                  setShowEditModal(false);
-                }}
+                onPress={handleUpdateBooking}
               >
                 <Text style={styles.modalButtonTextConfirm}>Enregistrer</Text>
               </TouchableOpacity>
@@ -410,6 +565,13 @@ const ProviderBookingsScreen: React.FC<ProviderBookingsScreenProps> = ({ navigat
         </View>
       </Modal>
     </View>
+    <Toast
+      visible={toast.visible}
+      message={toast.message}
+      type={toast.type}
+      onHide={hideToast}
+    />
+    </>
   );
 };
 
@@ -450,32 +612,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabsContainer: {
-    flexDirection: 'row',
     backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  tabsContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+  },
   tab: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
+    marginRight: 4,
+    minHeight: 28,
+    justifyContent: 'center',
   },
   tabActive: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.primary,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
   tabTextActive: {
-    color: COLORS.primary,
+    color: COLORS.white,
+    fontWeight: '700',
   },
   bookingsList: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,
@@ -502,7 +674,19 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 12,
     padding: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   bookingHeader: {
     flexDirection: 'row',
@@ -596,7 +780,7 @@ const styles = StyleSheet.create({
   tabWithBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   modalContainer: {
     flex: 1,

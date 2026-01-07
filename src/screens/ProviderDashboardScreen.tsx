@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,7 +83,11 @@ const ProviderDashboardScreen: React.FC<ProviderDashboardScreenProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
@@ -245,6 +250,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   header: {
     paddingTop: 20,
     paddingBottom: 24,
@@ -305,11 +314,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginHorizontal: '1%',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   statNumber: {
     fontSize: 28,

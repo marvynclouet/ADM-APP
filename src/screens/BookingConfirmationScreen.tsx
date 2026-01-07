@@ -101,7 +101,8 @@ const BookingConfirmationScreen: React.FC<BookingConfirmationScreenProps> = ({ n
 
   const handleViewBookings = () => {
     if (navigation) {
-      navigation.navigate('Bookings');
+      // Naviguer vers le Tab Navigator parent, puis vers l'écran Bookings
+      navigation.navigate('MainTabs', { screen: 'Bookings' });
     }
   };
 
@@ -119,13 +120,23 @@ const BookingConfirmationScreen: React.FC<BookingConfirmationScreenProps> = ({ n
   };
 
   const handleMessageProvider = () => {
-    if (navigation) {
-      navigation.navigate('Messages');
+    if (navigation && currentBooking.provider?.id) {
+      // Naviguer vers l'écran de messages (Chat)
+      navigation.navigate('Chat', { 
+        providerId: currentBooking.provider.id,
+        providerName: currentBooking.provider.name 
+      });
+    } else {
+      showError('Impossible d\'ouvrir la messagerie. Informations du prestataire manquantes.');
     }
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <Toast
         visible={toast.visible}
         message={toast.message}
@@ -282,7 +293,10 @@ const BookingConfirmationScreen: React.FC<BookingConfirmationScreenProps> = ({ n
       {/* Bouton retour à l'accueil */}
       <TouchableOpacity
         style={styles.homeButton}
-        onPress={() => navigation?.navigate('Accueil')}
+        onPress={() => {
+          // Naviguer vers le Tab Navigator parent, puis vers l'écran Accueil
+          navigation?.navigate('MainTabs', { screen: 'Accueil' });
+        }}
       >
         <Text style={styles.homeButtonText}>Retour à l'accueil</Text>
         <Ionicons name="home" size={20} color={COLORS.white} />
@@ -295,6 +309,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
@@ -328,10 +346,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   successIcon: {
@@ -354,10 +369,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   sectionTitle: {
@@ -389,10 +401,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   actionsGrid: {
@@ -409,10 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 10,
     padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
     elevation: 1,
   },
   actionText: {

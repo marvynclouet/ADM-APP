@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,17 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import EmergencyBadge from '../components/EmergencyBadge';
+import { AuthService } from '../../backend/services/auth.service';
+import { PremiumService } from '../../backend/services/premium.service';
+import { useToast } from '../hooks/useToast';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface ProviderEmergencyScreenProps {
   navigation?: any;
@@ -19,49 +25,101 @@ interface ProviderEmergencyScreenProps {
 
 const ProviderEmergencyScreen: React.FC<ProviderEmergencyScreenProps> = ({ navigation }) => {
   const [acceptsEmergency, setAcceptsEmergency] = useState(false);
-  const [emergencyCredits, setEmergencyCredits] = useState(5);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { showSuccess, showError } = useToast();
 
-  const handleToggleEmergency = (value: boolean) => {
-    if (value && emergencyCredits === 0) {
+  // Charger le statut premium et urgence
+  const loadEmergencyStatus = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const user = await AuthService.getCurrentUser();
+      if (!user || !user.is_provider || !user.id) {
+        Alert.alert('Erreur', 'Vous n\'êtes pas un prestataire');
+        navigation?.goBack();
+        return;
+      }
+
+      const premiumInfo = await PremiumService.getProviderPremiumInfo(user.id);
+      setIsPremium(premiumInfo.isPremium);
+      setAcceptsEmergency(premiumInfo.acceptsEmergency);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement du statut urgence:', error);
+      showError('Erreur lors du chargement du statut urgence');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigation, showError]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEmergencyStatus();
+    }, [loadEmergencyStatus])
+  );
+
+  useEffect(() => {
+    loadEmergencyStatus();
+  }, [loadEmergencyStatus]);
+
+  const handleToggleEmergency = async (value: boolean) => {
+    if (!isPremium) {
       Alert.alert(
-        'Crédits insuffisants',
-        'Vous n\'avez plus de crédits urgence. Voulez-vous en acheter ?',
+        'Premium requis',
+        'Vous devez être premium pour accepter les réservations urgentes.\n\nVoulez-vous activer le premium maintenant ?',
         [
           { text: 'Annuler', style: 'cancel' },
           {
-            text: 'Acheter',
+            text: 'Activer Premium',
             onPress: () => {
-              Alert.alert('Achat', 'Achat de crédits (simulation)');
-              setEmergencyCredits(10);
-              setAcceptsEmergency(true);
+              navigation?.navigate('ProviderPremium');
             },
           },
         ]
       );
-    } else {
-      setAcceptsEmergency(value);
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const user = await AuthService.getCurrentUser();
+      if (!user || !user.id) {
+        showError('Utilisateur non connecté');
+        return;
+      }
+
+      if (value) {
+        await PremiumService.activateEmergency(user.id);
+        setAcceptsEmergency(true);
+        showSuccess('Réservations urgentes activées !');
+      } else {
+        await PremiumService.deactivateEmergency(user.id);
+        setAcceptsEmergency(false);
+        showSuccess('Réservations urgentes désactivées');
+      }
+      await loadEmergencyStatus();
+    } catch (error: any) {
+      console.error('Erreur toggle emergency:', error);
+      showError(error.message || 'Erreur lors de la modification');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleBuyCredits = () => {
-    Alert.alert(
-      'Acheter des crédits urgence',
-      'Pack de 10 crédits urgence : 15€\nPack de 25 crédits : 30€\nPack de 50 crédits : 50€',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Acheter 10 crédits',
-          onPress: () => {
-            setEmergencyCredits(emergencyCredits + 10);
-            Alert.alert('Succès', '10 crédits ajoutés (simulation)');
-          },
-        },
-      ]
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement..." />
+      </View>
     );
-  };
+  }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
@@ -77,13 +135,23 @@ const ProviderEmergencyScreen: React.FC<ProviderEmergencyScreenProps> = ({ navig
       <View style={styles.statusSection}>
         <View style={styles.statusCard}>
           <EmergencyBadge size="large" />
+          {!isPremium && (
+            <View style={styles.premiumRequiredBanner}>
+              <Ionicons name="lock-closed" size={20} color={COLORS.warning} />
+              <Text style={styles.premiumRequiredText}>
+                Premium requis pour activer les réservations urgentes
+              </Text>
+            </View>
+          )}
           <Text style={styles.statusText}>
             {acceptsEmergency ? 'Vous acceptez les urgences' : 'Mode urgence désactivé'}
           </Text>
           <Text style={styles.statusDescription}>
             {acceptsEmergency
-              ? 'Les clients peuvent vous contacter pour des réservations urgentes'
-              : 'Activez le mode urgence pour accepter des réservations en urgence'}
+              ? 'Les clients peuvent réserver en urgence avec une majoration de 20-30%'
+              : isPremium
+              ? 'Activez le mode urgence pour accepter des réservations urgentes'
+              : 'Activez Premium pour débloquer les réservations urgentes'}
           </Text>
         </View>
       </View>
@@ -94,36 +162,51 @@ const ProviderEmergencyScreen: React.FC<ProviderEmergencyScreenProps> = ({ navig
           <View style={styles.toggleInfo}>
             <Text style={styles.toggleTitle}>Accepter les réservations urgentes</Text>
             <Text style={styles.toggleDescription}>
-              Permet aux clients de réserver en urgence (sous 24h)
+              {isPremium 
+                ? 'Permet aux clients de réserver en urgence (même jour) avec majoration de 20-30%'
+                : 'Premium requis : Activez Premium pour débloquer cette fonctionnalité'}
             </Text>
           </View>
           <Switch
             value={acceptsEmergency}
             onValueChange={handleToggleEmergency}
+            disabled={!isPremium || isProcessing}
             trackColor={{ false: COLORS.lightGray, true: COLORS.error }}
             thumbColor={acceptsEmergency ? COLORS.error : COLORS.white}
           />
         </View>
+        {!isPremium && (
+          <TouchableOpacity
+            style={styles.activatePremiumButton}
+            onPress={() => navigation?.navigate('ProviderPremium')}
+          >
+            <Ionicons name="star" size={20} color={COLORS.white} />
+            <Text style={styles.activatePremiumText}>Activer Premium</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Credits */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Crédits Urgence</Text>
-        <View style={styles.creditsCard}>
-          <View style={styles.creditsHeader}>
-            <Ionicons name="flash" size={32} color={COLORS.error} />
-            <Text style={styles.creditsAmount}>{emergencyCredits}</Text>
-            <Text style={styles.creditsLabel}>crédits disponibles</Text>
+      {/* Info Premium */}
+      {!isPremium && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pourquoi Premium ?</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoText}>
+              Les réservations urgentes sont une fonctionnalité exclusive Premium car elles nécessitent une disponibilité immédiate et une flexibilité accrue.
+            </Text>
+            <Text style={styles.infoText}>
+              En contrepartie, vous bénéficiez d'une majoration de 20-30% sur chaque réservation urgente.
+            </Text>
+            <TouchableOpacity
+              style={styles.activatePremiumButton}
+              onPress={() => navigation?.navigate('ProviderPremium')}
+            >
+              <Ionicons name="star" size={20} color={COLORS.white} />
+              <Text style={styles.activatePremiumText}>Activer Premium (Gratuit en phase test)</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.creditsDescription}>
-            Chaque réservation urgente acceptée consomme 1 crédit
-          </Text>
-          <TouchableOpacity style={styles.buyButton} onPress={handleBuyCredits}>
-            <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-            <Text style={styles.buyButtonText}>Acheter des crédits</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      )}
 
       {/* Information */}
       <View style={styles.section}>
@@ -147,7 +230,7 @@ const ProviderEmergencyScreen: React.FC<ProviderEmergencyScreenProps> = ({ navig
           {
             step: '4',
             title: 'Gains',
-            desc: 'Tarifs majorés de 20% pour les réservations urgentes',
+            desc: 'Tarifs majorés de 20-30% pour les réservations urgentes',
           },
         ].map((item, index) => (
           <View key={index} style={styles.infoItem}>
@@ -166,7 +249,7 @@ const ProviderEmergencyScreen: React.FC<ProviderEmergencyScreenProps> = ({ navig
       <View style={styles.noteSection}>
         <Ionicons name="information-circle" size={20} color={COLORS.textSecondary} />
         <Text style={styles.noteText}>
-          Le système de paiement réel sera intégré dans une prochaine version
+          Phase de test : Premium gratuit. Les réservations urgentes permettent aux clients de réserver pour le même jour avec une majoration de 20-30%.
         </Text>
       </View>
     </ScrollView>
@@ -177,6 +260,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     paddingTop: 20,
@@ -207,11 +294,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   statusText: {
     fontSize: 20,
@@ -345,6 +434,54 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontStyle: 'italic',
     lineHeight: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  premiumRequiredBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warning + '20',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  premiumRequiredText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.warning,
+    fontWeight: '600',
+  },
+  activatePremiumButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.warning,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  activatePremiumText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoCard: {
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 12,
+    padding: 16,
+  },
+  infoText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
   },
 });
 

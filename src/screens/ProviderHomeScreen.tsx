@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { AuthService } from '../../backend/services/auth.service';
+import { BookingsService } from '../../backend/services/bookings.service';
+import { supabase } from '../../backend/supabase/config';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isSmallScreen = SCREEN_WIDTH < 375;
 
 interface ProviderHomeScreenProps {
   onNavigateToBookings?: () => void;
@@ -29,15 +37,130 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
   onLogout,
   navigation,
 }) => {
-  const [provider] = useState({
-    name: 'Sophie Martin',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie&backgroundColor=b6e3f4',
-    rating: 4.8,
-    totalBookings: 156,
-    monthlyEarnings: 2840,
-    pendingBookings: 3,
-    unreadMessages: 5
+  const [provider, setProvider] = useState<any>(null);
+  const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    pendingBookings: 0,
+    unreadMessages: 0,
+    monthlyEarnings: 0,
   });
+
+  // Charger les données du provider
+  const loadProviderData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Récupérer l'utilisateur actuel
+      const userData = await AuthService.getCurrentUser();
+      if (!userData || !userData.is_provider) {
+        Alert.alert('Erreur', 'Vous n\'êtes pas un prestataire');
+        return;
+      }
+
+      // Construire le nom complet
+      const fullName = userData.first_name && userData.last_name
+        ? `${userData.first_name} ${userData.last_name}`
+        : userData.email || 'Prestataire';
+
+      // Avatar
+      const avatar = userData.avatar_url || 
+        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fullName)}&backgroundColor=b6e3f4`;
+
+      setProvider({
+        id: userData.id,
+        name: fullName,
+        avatar: avatar,
+        rating: 0, // À calculer depuis les reviews
+        email: userData.email,
+      });
+
+      // Charger les statistiques
+      await loadStats(userData.id);
+
+      // Charger les réservations du jour
+      await loadTodayBookings(userData.id);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des données du provider:', error);
+      Alert.alert('Erreur', error.message || 'Erreur lors du chargement des données');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Charger les statistiques
+  const loadStats = async (providerId: string) => {
+    try {
+      // Compter les réservations en attente
+      const { count: pendingCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('provider_id', providerId)
+        .eq('status', 'pending');
+
+      // Calculer les revenus du mois en cours
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const { data: monthlyBookings } = await supabase
+        .from('bookings')
+        .select('total_price')
+        .eq('provider_id', providerId)
+        .eq('status', 'completed')
+        .gte('booking_date', startOfMonth.toISOString().split('T')[0])
+        .lte('booking_date', endOfMonth.toISOString().split('T')[0]);
+
+      const monthlyEarnings = monthlyBookings?.reduce((sum, booking) => sum + (booking.total_price || 0), 0) || 0;
+
+      // Compter les messages non lus (à implémenter si table messages existe)
+      // Pour l'instant, on met 0
+      const unreadMessages = 0;
+
+      setStats({
+        pendingBookings: pendingCount || 0,
+        unreadMessages: unreadMessages,
+        monthlyEarnings: Math.round(monthlyEarnings),
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+    }
+  };
+
+  // Charger les réservations du jour
+  const loadTodayBookings = async (providerId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const bookings = await BookingsService.getProviderBookings(providerId, { date: today });
+
+      // Transformer les données pour l'affichage
+      const transformedBookings = (bookings || []).map((booking: any) => ({
+        id: booking.id,
+        clientName: booking.user?.first_name && booking.user?.last_name
+          ? `${booking.user.first_name} ${booking.user.last_name}`
+          : booking.user?.email || 'Client',
+        service: booking.service?.name || 'Service',
+        time: booking.booking_time || '',
+        status: booking.status === 'confirmed' ? 'confirmé' : booking.status === 'pending' ? 'en attente' : booking.status,
+      }));
+
+      setTodayBookings(transformedBookings);
+    } catch (error) {
+      console.error('Erreur lors du chargement des réservations du jour:', error);
+      setTodayBookings([]);
+    }
+  };
+
+  // Recharger les données quand l'écran est focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProviderData();
+    }, [loadProviderData])
+  );
+
+  useEffect(() => {
+    loadProviderData();
+  }, [loadProviderData]);
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -116,14 +239,30 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
     }
   };
 
-  const todayBookings = [
-    { id: '1', clientName: 'Marie Dupont', service: 'Manucure', time: '14:00', status: 'confirmé' },
-    { id: '2', clientName: 'Julie Martin', service: 'Coiffure', time: '16:30', status: 'en attente' },
-    { id: '3', clientName: 'Sarah Bernard', service: 'Massage', time: '18:00', status: 'confirmé' }
-  ];
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement..." />
+      </View>
+    );
+  }
+
+  if (!provider) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Aucun prestataire connecté</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      bounces={true}
+      scrollEventThrottle={16}
+    >
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity 
@@ -135,10 +274,12 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             <View style={styles.profileInfo}>
               <Text style={styles.welcomeText}>Bonjour !</Text>
               <Text style={styles.providerName}>{provider.name}</Text>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={14} color={COLORS.warning} />
-                <Text style={styles.ratingText}>{provider.rating}</Text>
-              </View>
+              {provider.rating > 0 && (
+                <View style={styles.ratingContainer}>
+                  <Ionicons name="star" size={14} color={COLORS.warning} />
+                  <Text style={styles.ratingText}>{provider.rating}</Text>
+                </View>
+              )}
             </View>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -147,10 +288,10 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             activeOpacity={0.8}
           >
             <Ionicons name="chatbubble-outline" size={24} color={COLORS.white} />
-            {provider.unreadMessages > 0 && (
+            {stats.unreadMessages > 0 && (
               <View style={styles.headerBadge}>
                 <Text style={styles.headerBadgeText}>
-                  {provider.unreadMessages > 99 ? '99+' : provider.unreadMessages}
+                  {stats.unreadMessages > 99 ? '99+' : stats.unreadMessages}
                 </Text>
               </View>
             )}
@@ -161,18 +302,18 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
       {/* Statistiques rapides */}
       <View style={styles.statsSection}>
         <View style={styles.statCard}>
-          <Ionicons name="calendar" size={24} color={COLORS.primary} />
-          <Text style={styles.statNumber}>{provider.pendingBookings}</Text>
+          <Ionicons name="calendar" size={isSmallScreen ? 20 : 24} color={COLORS.primary} />
+          <Text style={styles.statNumber}>{stats.pendingBookings}</Text>
           <Text style={styles.statLabel}>Réservations en attente</Text>
         </View>
         <View style={styles.statCard}>
-          <Ionicons name="chatbubble" size={24} color={COLORS.accent} />
-          <Text style={styles.statNumber}>{provider.unreadMessages}</Text>
+          <Ionicons name="chatbubble" size={isSmallScreen ? 20 : 24} color={COLORS.accent} />
+          <Text style={styles.statNumber}>{stats.unreadMessages}</Text>
           <Text style={styles.statLabel}>Messages non lus</Text>
         </View>
         <View style={styles.statCard}>
-          <Ionicons name="cash" size={24} color={COLORS.success} />
-          <Text style={styles.statNumber}>{provider.monthlyEarnings}€</Text>
+          <Ionicons name="cash" size={isSmallScreen ? 20 : 24} color={COLORS.success} />
+          <Text style={styles.statNumber}>{stats.monthlyEarnings}€</Text>
           <Text style={styles.statLabel}>Revenus du mois</Text>
         </View>
       </View>
@@ -186,7 +327,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('bookings')}
             activeOpacity={0.8}
           >
-            <Ionicons name="calendar-outline" size={32} color={COLORS.primary} />
+            <Ionicons name="calendar-outline" size={isSmallScreen ? 28 : 32} color={COLORS.primary} />
             <Text style={styles.quickActionText}>Réservations</Text>
           </TouchableOpacity>
           
@@ -195,7 +336,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('services')}
             activeOpacity={0.8}
           >
-            <Ionicons name="construct-outline" size={32} color={COLORS.secondary} />
+            <Ionicons name="construct-outline" size={isSmallScreen ? 28 : 32} color={COLORS.secondary} />
             <Text style={styles.quickActionText}>Mes Services</Text>
           </TouchableOpacity>
           
@@ -204,7 +345,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('schedule')}
             activeOpacity={0.8}
           >
-            <Ionicons name="time-outline" size={32} color={COLORS.warning} />
+            <Ionicons name="time-outline" size={isSmallScreen ? 28 : 32} color={COLORS.warning} />
             <Text style={styles.quickActionText}>Planning</Text>
           </TouchableOpacity>
 
@@ -213,7 +354,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('shop')}
             activeOpacity={0.8}
           >
-            <Ionicons name="storefront-outline" size={32} color={COLORS.accent} />
+            <Ionicons name="storefront-outline" size={isSmallScreen ? 28 : 32} color={COLORS.accent} />
             <Text style={styles.quickActionText}>Boutique</Text>
           </TouchableOpacity>
 
@@ -222,26 +363,8 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('reviews')}
             activeOpacity={0.8}
           >
-            <Ionicons name="star-outline" size={32} color="#FFD700" />
+            <Ionicons name="star-outline" size={isSmallScreen ? 28 : 32} color="#FFD700" />
             <Text style={styles.quickActionText}>Avis</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.quickActionCard}
-            onPress={() => handleQuickAction('certificates')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="school-outline" size={32} color={COLORS.primary} />
-            <Text style={styles.quickActionText}>Diplômes</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.quickActionCard}
-            onPress={() => handleQuickAction('premium')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="diamond-outline" size={32} color="#FFD700" />
-            <Text style={styles.quickActionText}>Premium</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -249,7 +372,7 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
             onPress={() => handleQuickAction('emergency')}
             activeOpacity={0.8}
           >
-            <Ionicons name="flash-outline" size={32} color={COLORS.error} />
+            <Ionicons name="flash-outline" size={isSmallScreen ? 28 : 32} color={COLORS.error} />
             <Text style={styles.quickActionText}>Urgence</Text>
           </TouchableOpacity>
         </View>
@@ -264,7 +387,13 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           </TouchableOpacity>
         </View>
         
-        {todayBookings.map((booking) => (
+        {todayBookings.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color={COLORS.textSecondary} />
+            <Text style={styles.emptyStateText}>Aucune réservation aujourd'hui</Text>
+          </View>
+        ) : (
+          todayBookings.map((booking) => (
           <View key={booking.id} style={styles.bookingCard}>
             <View style={styles.bookingInfo}>
               <Text style={styles.clientName}>{booking.clientName}</Text>
@@ -280,7 +409,8 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
               </View>
             </View>
           </View>
-        ))}
+          ))
+        )}
       </View>
 
       {/* Revenus */}
@@ -291,11 +421,11 @@ const ProviderHomeScreen: React.FC<ProviderHomeScreenProps> = ({
           onPress={() => handleQuickAction('earnings')}
           activeOpacity={0.8}
         >
-          <LinearGradient colors={[COLORS.success, COLORS.success]} style={styles.earningsGradient}>
+            <LinearGradient colors={[COLORS.success, COLORS.success]} style={styles.earningsGradient}>
             <View style={styles.earningsContent}>
               <Text style={styles.earningsTitle}>Revenus du mois</Text>
-              <Text style={styles.earningsAmount}>{provider.monthlyEarnings}€</Text>
-              <Text style={styles.earningsSubtitle}>+12% vs mois dernier</Text>
+              <Text style={styles.earningsAmount}>{stats.monthlyEarnings}€</Text>
+              <Text style={styles.earningsSubtitle}>Ce mois</Text>
             </View>
             <Ionicons name="trending-up" size={32} color={COLORS.white} />
           </LinearGradient>
@@ -310,10 +440,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   header: {
-    paddingTop: 20,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? (isSmallScreen ? 40 : 50) : (isSmallScreen ? 20 : 30),
+    paddingBottom: isSmallScreen ? 20 : 24,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
   },
   headerContent: {
     flexDirection: 'row',
@@ -326,25 +460,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
+    width: isSmallScreen ? 44 : 50,
+    height: isSmallScreen ? 44 : 50,
+    borderRadius: isSmallScreen ? 22 : 25,
+    marginRight: isSmallScreen ? 10 : 12,
     backgroundColor: COLORS.white,
   },
   profileInfo: {
     flex: 1,
+    minWidth: 0,
   },
   welcomeText: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.white,
     opacity: 0.9,
   },
   providerName: {
-    fontSize: 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: 'bold',
     color: COLORS.white,
     marginBottom: 2,
+    flexShrink: 1,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -380,98 +516,116 @@ const styles = StyleSheet.create({
   },
   statsSection: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: -20,
-    marginBottom: 24,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    marginTop: isSmallScreen ? -16 : -20,
+    marginBottom: isSmallScreen ? 20 : 24,
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: isSmallScreen ? 10 : 12,
+    padding: isSmallScreen ? 12 : 16,
     alignItems: 'center',
-    marginHorizontal: 4,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    marginHorizontal: isSmallScreen ? 3 : 4,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: isSmallScreen ? 20 : 24,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
-    marginTop: 8,
+    marginTop: isSmallScreen ? 6 : 8,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: isSmallScreen ? 10 : 12,
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 4,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: isSmallScreen ? 20 : 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    marginBottom: isSmallScreen ? 12 : 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    marginBottom: isSmallScreen ? 12 : 16,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.primary,
     fontWeight: '600',
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    gap: isSmallScreen ? 10 : 12,
   },
   quickActionCard: {
-    width: '47%',
+    width: isSmallScreen ? '48%' : '47%',
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: isSmallScreen ? 10 : 12,
+    padding: isSmallScreen ? 16 : 20,
     alignItems: 'center',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
   },
   quickActionText: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginTop: 8,
+    marginTop: isSmallScreen ? 6 : 8,
     textAlign: 'center',
   },
   bookingCard: {
     backgroundColor: COLORS.white,
-    marginHorizontal: 16,
+    marginHorizontal: isSmallScreen ? 12 : 16,
     marginVertical: 4,
-    borderRadius: 12,
-    padding: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    borderRadius: isSmallScreen ? 10 : 12,
+    padding: isSmallScreen ? 12 : 16,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
   },
   bookingInfo: {
     flex: 1,
   },
   clientName: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
   serviceName: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.textSecondary,
     marginBottom: 2,
   },
   bookingTime: {
-    fontSize: 12,
+    fontSize: isSmallScreen ? 11 : 12,
     color: COLORS.textSecondary,
   },
   bookingStatus: {
@@ -494,13 +648,19 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   earningsCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
+    marginHorizontal: isSmallScreen ? 12 : 16,
+    borderRadius: isSmallScreen ? 12 : 16,
     overflow: 'hidden',
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 5,
+    }),
   },
   earningsGradient: {
-    padding: 20,
+    padding: isSmallScreen ? 16 : 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -509,21 +669,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   earningsTitle: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     color: COLORS.white,
     opacity: 0.9,
     marginBottom: 4,
   },
   earningsAmount: {
-    fontSize: 32,
+    fontSize: isSmallScreen ? 26 : 32,
     fontWeight: 'bold',
     color: COLORS.white,
     marginBottom: 4,
   },
   earningsSubtitle: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.white,
     opacity: 0.8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.error,
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 16,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
 

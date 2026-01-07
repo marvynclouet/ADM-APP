@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import Logo from './Logo';
@@ -18,12 +18,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // useNativeDriver n'est pas supporté sur web
+    const canUseNativeDriver = Platform.OS !== 'web';
+
     // Animation de rotation continue
     const rotateAnimation = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 2000,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       })
     );
 
@@ -32,13 +35,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
     ]);
 

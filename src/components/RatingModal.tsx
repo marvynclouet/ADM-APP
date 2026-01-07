@@ -199,10 +199,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
     elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
   },
   header: {
     flexDirection: 'row',
@@ -319,14 +316,11 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 12,
     elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(255, 107, 107, 0.3)',
   },
   submitButtonDisabled: {
     backgroundColor: '#E0E0E0',
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   submitIcon: {
     marginRight: 8,

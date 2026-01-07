@@ -131,7 +131,7 @@ export class BookingsService {
    */
   static async updateBookingStatus(
     bookingId: string,
-    status: 'confirmed' | 'cancelled' | 'completed' | 'no_show',
+    status: 'confirmed' | 'cancelled' | 'completed' | 'no_show' | 'pending',
     notes?: string
   ) {
     try {
@@ -157,5 +157,41 @@ export class BookingsService {
       throw new Error(error.message || 'Erreur lors de la mise à jour de la réservation');
     }
   }
+
+  /**
+   * Modifier la date et l'heure d'une réservation
+   */
+  static async updateBookingDateTime(
+    bookingId: string,
+    bookingDate: string,
+    bookingTime: string
+  ) {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({
+          booking_date: bookingDate,
+          booking_time: bookingTime,
+        })
+        .eq('id', bookingId)
+        .select(`
+          *,
+          service:services(*),
+          user:users!bookings_user_id_fkey(*)
+        `)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      console.error('Erreur updateBookingDateTime:', error);
+      throw new Error(error.message || 'Erreur lors de la modification de la réservation');
+    }
+  }
 }
+
+
+
+
+
 

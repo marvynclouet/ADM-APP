@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 interface SkeletonCardProps {
@@ -23,12 +23,12 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
         Animated.timing(shimmerAnim, {
           toValue: 1,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(shimmerAnim, {
           toValue: 0,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     );

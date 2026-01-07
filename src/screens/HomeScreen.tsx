@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   Animated,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +26,13 @@ import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useFavorites } from '../hooks/useFavorites';
+import { AuthService } from '../../backend/services/auth.service';
+import { UsersService } from '../../backend/services/users.service';
+import { ServiceProvider } from '../types';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isSmallScreen = SCREEN_WIDTH < 375;
+const isMediumScreen = SCREEN_WIDTH >= 375 && SCREEN_WIDTH < 414;
 
 interface HomeScreenProps {
   onNavigateToSearch?: () => void;
@@ -44,8 +53,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [premiumProviders, setPremiumProviders] = useState<ServiceProvider[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const [user, setUser] = useState<{
+    name: string;
+    avatar: string;
+  }>({
+    name: '',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User&backgroundColor=b6e3f4'
+  });
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -54,10 +72,110 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const providersAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Données utilisateur avec image d'API
-  const user = {
-    name: 'Marie',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie&backgroundColor=b6e3f4'
+  // Charger les données utilisateur
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userData = await AuthService.getCurrentUser();
+        if (userData) {
+          // Construire le nom à afficher
+          let displayName = '';
+          if (userData.first_name && userData.last_name) {
+            displayName = `${userData.first_name} ${userData.last_name}`;
+          } else if (userData.first_name) {
+            displayName = userData.first_name;
+          } else if (userData.last_name) {
+            displayName = userData.last_name;
+          } else if (userData.email) {
+            // Utiliser la partie avant @ de l'email comme nom
+            displayName = userData.email.split('@')[0];
+          } else {
+            displayName = 'Utilisateur';
+          }
+
+          // Générer l'avatar
+          let avatarUrl = userData.avatar_url;
+          if (!avatarUrl) {
+            // Générer un avatar basé sur le nom ou l'email
+            const seed = displayName || userData.email || 'User';
+            avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4`;
+          }
+
+          setUser({
+            name: displayName,
+            avatar: avatarUrl
+          });
+        }
+      } catch (error) {
+        console.error('Erreur chargement utilisateur:', error);
+      }
+    };
+
+    loadUserData();
+    loadPremiumProviders();
+    
+    // Recharger les données quand l'écran revient au focus (après modification du profil)
+    // Note: navigation peut ne pas être disponible dans tous les contextes
+    // On utilise un intervalle pour rafraîchir périodiquement
+    const refreshInterval = setInterval(() => {
+      loadUserData();
+      loadPremiumProviders();
+    }, 30000); // Rafraîchir toutes les 30 secondes
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Charger les prestataires premium
+  const loadPremiumProviders = async () => {
+    try {
+      setIsLoadingProviders(true);
+      const providers = await UsersService.getProviders({
+        isPremium: true,
+        limit: 10,
+      });
+
+      // Transformer les données au format ServiceProvider
+      const transformedProviders: ServiceProvider[] = providers.map((p: any) => ({
+        id: p.id,
+        name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || 'Prestataire',
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email,
+        phone: p.phone,
+        avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.email || p.id)}&backgroundColor=b6e3f4`,
+        isProvider: p.is_provider,
+        rating: p.rating || 0,
+        reviewCount: p.review_count || 0,
+        city: p.city,
+        activityZone: p.activity_zone,
+        description: p.bio || p.description,
+        mainSkills: p.main_skills || [],
+        isPremium: p.is_premium || false,
+        acceptsEmergency: p.accepts_emergency || false,
+        location: {
+          latitude: p.latitude || 0,
+          longitude: p.longitude || 0,
+          address: p.address || p.city || '',
+          city: p.city || '',
+          postalCode: p.postal_code || '',
+        },
+        services: [], // Les services seront chargés séparément si nécessaire
+        experience: p.experience || 0,
+        certifications: [],
+        availability: [],
+        priceRange: { min: 0, max: 0 },
+      }));
+
+      setPremiumProviders(transformedProviders);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des prestataires premium:', error);
+      // En cas d'erreur, laisser la liste vide (pas de fallback vers données mockées)
+      setPremiumProviders([]);
+    } finally {
+      setIsLoadingProviders(false);
+    }
   };
 
   // Animation d'entrée
@@ -71,28 +189,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
     loadData();
 
+    // useNativeDriver n'est pas supporté sur web
+    const canUseNativeDriver = Platform.OS !== 'web';
+
     const animations = [
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 800,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
       Animated.timing(carouselAnim, {
         toValue: 1,
         duration: 1000,
         delay: 300,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
       Animated.timing(providersAnim, {
         toValue: 1,
         duration: 1000,
         delay: 600,
-        useNativeDriver: true,
+        useNativeDriver: canUseNativeDriver,
       }),
     ];
 
@@ -104,12 +225,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         Animated.timing(pulseAnim, {
           toValue: 1.1,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver: canUseNativeDriver,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver: canUseNativeDriver,
         }),
       ])
     );
@@ -190,7 +311,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      bounces={true}
+      scrollEventThrottle={16}
+    >
       <Toast
         visible={toast.visible}
         message={toast.message}
@@ -219,10 +346,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               onPress={handleUserProfilePress}
               activeOpacity={0.8}
             >
-              <Image
-                source={{ uri: user.avatar }}
-                style={styles.userAvatar}
-              />
+              {user.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={styles.userAvatar}
+                  onError={() => {
+                    // En cas d'erreur de chargement, utiliser un avatar par défaut
+                    const seed = user.name || 'User';
+                    setUser({
+                      ...user,
+                      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4`
+                    });
+                  }}
+                />
+              ) : (
+                <View style={[styles.userAvatar, styles.userAvatarPlaceholder]}>
+                  <Ionicons name="person" size={20} color={COLORS.white} />
+                </View>
+              )}
               <View style={styles.welcomeText}>
                 <Text style={styles.welcomeTitle}>Bienvenue !</Text>
                 <Text style={styles.userName}>{user.name}</Text>
@@ -288,7 +429,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         />
       </Animated.View>
 
-      {/* Prestataires populaires - CLIQUABLES avec animation */}
+      {/* Prestataires Premium - CLIQUABLES avec animation */}
       <Animated.View
         style={[
           styles.providersSection,
@@ -306,26 +447,39 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         ]}
       >
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Prestataires populaires</Text>
+          <Text style={styles.sectionTitle}>Prestataires Premium</Text>
           <TouchableOpacity onPress={handleSeeAllProviders} activeOpacity={0.7}>
             <Text style={styles.seeAllText}>Voir tout</Text>
           </TouchableOpacity>
         </View>
         
-        {SERVICE_PROVIDERS.map((provider, index) => (
+        {isLoadingProviders ? (
+          <View style={styles.loadingProvidersContainer}>
+            <LoadingSpinner size="small" text="Chargement des prestataires premium..." />
+          </View>
+        ) : premiumProviders.length === 0 ? (
+          <View style={styles.emptyProvidersContainer}>
+            <Ionicons name="star-outline" size={48} color={COLORS.textSecondary} />
+            <Text style={styles.emptyProvidersText}>Aucun prestataire premium pour le moment</Text>
+          </View>
+        ) : (
+          premiumProviders.map((provider, index) => (
           <Animated.View
             key={provider.id}
-            style={{
-              opacity: providersAnim,
-              transform: [
-                {
-                  translateX: providersAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [100 * (index + 1), 0],
-                  }),
-                },
-              ],
-            }}
+            style={[
+              styles.providerCardWrapper,
+              {
+                opacity: providersAnim,
+                transform: [
+                  {
+                    translateX: providersAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [100 * (index + 1), 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
           >
             <ProviderCard
               provider={provider}
@@ -339,14 +493,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                   showSuccess('Ajouté aux favoris ❤️');
                 }
               }}
-              onEmergencyPress={() => {
-                if (onNavigateToEmergency) {
-                  onNavigateToEmergency(provider);
-                }
-              }}
             />
           </Animated.View>
-        ))}
+          ))
+        )}
       </Animated.View>
 
       {/* Services en promotion - CLIQUABLE */}
@@ -384,63 +534,83 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   headerContainer: {
     // Styles pour le conteneur du header animé
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? (isSmallScreen ? 40 : 50) : (isSmallScreen ? 20 : 30),
+    paddingBottom: isSmallScreen ? 16 : 20,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    marginBottom: isSmallScreen ? 16 : 20,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isSmallScreen ? 16 : 20,
   },
   welcomeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: isSmallScreen ? 8 : 10,
+    flex: 1,
   },
   userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
+    width: isSmallScreen ? 36 : 40,
+    height: isSmallScreen ? 36 : 40,
+    borderRadius: isSmallScreen ? 18 : 20,
+    marginRight: isSmallScreen ? 8 : 10,
+    backgroundColor: COLORS.lightGray,
+  },
+  userAvatarPlaceholder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   welcomeText: {
     flex: 1,
+    minWidth: 0, // Permet au texte de se rétrécir si nécessaire
   },
   welcomeTitle: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.white,
     marginBottom: 2,
   },
   userName: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     fontWeight: 'bold',
     color: COLORS.white,
+    flexShrink: 1,
   },
   welcomeArrow: {
-    marginLeft: 5,
+    marginLeft: isSmallScreen ? 4 : 5,
   },
   logoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: isSmallScreen ? 44 : 50,
+    height: isSmallScreen ? 44 : 50,
+    borderRadius: isSmallScreen ? 22 : 25,
     backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: isSmallScreen ? 8 : 10,
+    flexShrink: 0, // Empêche le logo de se rétrécir
   },
   searchContainer: {
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    borderRadius: isSmallScreen ? 10 : 12,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
+    paddingVertical: isSmallScreen ? 10 : 12,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -448,70 +618,79 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
+    marginLeft: isSmallScreen ? 6 : 8,
+    fontSize: isSmallScreen ? 14 : 16,
     color: COLORS.textSecondary,
   },
   carouselContainer: {
-    marginTop: 20,
+    marginTop: isSmallScreen ? 16 : 20,
   },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
+    marginTop: isSmallScreen ? 20 : 24,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: isSmallScreen ? 12 : 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 12 : 14,
     color: COLORS.primary,
     fontWeight: '600',
   },
   providersSection: {
-    marginTop: 20,
+    marginTop: isSmallScreen ? 16 : 20,
+    paddingHorizontal: isSmallScreen ? 12 : 16,
   },
   promotionCard: {
-    borderRadius: 16,
+    borderRadius: isSmallScreen ? 12 : 16,
     overflow: 'hidden',
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 5,
+    }),
   },
   promotionGradient: {
-    padding: 20,
+    padding: isSmallScreen ? 16 : 20,
     alignItems: 'center',
   },
   promotionContent: {
     alignItems: 'center',
   },
   promotionTitle: {
-    fontSize: 22,
+    fontSize: isSmallScreen ? 18 : 22,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   promotionSubtitle: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     color: COLORS.textSecondary,
-    marginBottom: 16,
+    marginBottom: isSmallScreen ? 12 : 16,
+    textAlign: 'center',
   },
   promotionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingHorizontal: isSmallScreen ? 20 : 24,
+    paddingVertical: isSmallScreen ? 8 : 10,
+    borderRadius: isSmallScreen ? 20 : 25,
   },
   promotionButtonText: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     fontWeight: '600',
     color: COLORS.accent,
     marginRight: 8,
@@ -529,6 +708,23 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     marginBottom: 16,
+  },
+  loadingProvidersContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyProvidersContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyProvidersText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  providerCardWrapper: {
+    marginBottom: 8,
   },
 });
 

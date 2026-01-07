@@ -304,6 +304,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Supprimer les triggers existants avant de les recréer
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_services_updated_at ON services;
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
+DROP TRIGGER IF EXISTS update_availability_updated_at ON availability;
+
+-- Créer les triggers
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -365,4 +373,9 @@ CREATE POLICY "Users can create own bookings" ON bookings
 -- Les prestataires peuvent mettre à jour leurs réservations
 CREATE POLICY "Providers can update own bookings" ON bookings
   FOR UPDATE USING (auth.uid() = provider_id);
+
+
+
+
+
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { Service, ServiceProvider } from '../types';
 import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import { BookingsService } from '../../backend/services/bookings.service';
+import { AuthService } from '../../backend/services/auth.service';
 
 interface BookingScreenProps {
   route?: {
@@ -34,7 +36,32 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
   const [notes, setNotes] = useState('');
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast, showSuccess, showError, hideToast } = useToast();
+
+  // Récupérer l'utilisateur connecté
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const user = await AuthService.getCurrentUser();
+        if (user && user.id) {
+          setCurrentUserId(user.id);
+        } else {
+          showError('Vous devez être connecté pour réserver');
+          setTimeout(() => {
+            navigation?.goBack();
+          }, 2000);
+        }
+      } catch (error: any) {
+        console.error('Erreur chargement utilisateur:', error);
+        showError('Erreur de connexion. Veuillez vous reconnecter.');
+        setTimeout(() => {
+          navigation?.goBack();
+        }, 2000);
+      }
+    };
+    loadCurrentUser();
+  }, []);
 
   // Données de fallback si pas de paramètres
   const defaultService: Service = {
@@ -81,17 +108,41 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
     return dates;
   };
 
-  // Générer les créneaux horaires disponibles
+  // Générer les créneaux horaires disponibles (minimum 4h après maintenant)
   const generateAvailableTimes = () => {
     const times = [];
-    for (let hour = 9; hour <= 17; hour++) {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const isToday = selectedDate === new Date().toISOString().split('T')[0];
+    
+    // Si c'est aujourd'hui, commencer 4h après maintenant
+    const startHour = isToday ? Math.max(9, currentHour + 4) : 9;
+    
+    // Si on est dans les 4 prochaines heures aujourd'hui, commencer à l'heure suivante
+    if (isToday && currentHour + 4 >= 17) {
+      // Si on ne peut pas réserver aujourd'hui (trop tard), ne pas afficher d'heures
+      return [];
+    }
+    
+    for (let hour = startHour; hour <= 17; hour++) {
+      // Si c'est aujourd'hui et l'heure actuelle, vérifier les minutes
+      if (isToday && hour === currentHour + 4) {
+        if (currentMinute > 0) {
+          // Si on est dans l'heure, commencer à l'heure suivante
+          continue;
+        }
+      }
       times.push(`${hour.toString().padStart(2, '0')}:00`);
-      times.push(`${hour.toString().padStart(2, '0')}:30`);
+      if (hour < 17) {
+        times.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
     }
     return times;
   };
 
   const availableDates = generateAvailableDates();
+  // Recalculer les heures disponibles quand la date change
   const availableTimes = generateAvailableTimes();
 
   const handleDateSelect = (date: string) => {
@@ -116,33 +167,67 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
     setShowConfirmationModal(true);
   };
 
-  const confirmBooking = () => {
+  const confirmBooking = async () => {
     if (!selectedDate || !selectedTime) {
       showError('Veuillez sélectionner une date et une heure');
       return;
     }
 
+    if (!currentUserId) {
+      showError('Vous devez être connecté pour réserver');
+      return;
+    }
+
+    if (!service || !provider) {
+      showError('Informations de service ou prestataire manquantes');
+      return;
+    }
+
+    // Vérifier que les IDs sont des UUIDs valides
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(provider.id) || !uuidRegex.test(service.id)) {
+      showError('Les données du service ou du prestataire ne sont pas valides. Veuillez réessayer depuis la recherche.');
+      console.error('IDs invalides - provider:', provider.id, 'service:', service.id);
+      return;
+    }
+
     setIsProcessing(true);
     
-    // Simuler le traitement du paiement
-    setTimeout(() => {
+    try {
+      // Calculer le prix total (avec majoration urgence si applicable)
+      const basePrice = currentService.price;
+      const totalPrice = basePrice; // Pour l'instant, pas de majoration
+
+      // Créer la réservation dans la BDD
+      const bookingData = await BookingsService.createBooking({
+        userId: currentUserId,
+        providerId: provider.id,
+        serviceId: service.id,
+        bookingDate: selectedDate,
+        bookingTime: selectedTime,
+        durationMinutes: currentService.duration,
+        totalPrice: totalPrice,
+        isEmergency: false,
+        clientNotes: notes || undefined,
+      });
+
+      console.log('Réservation créée avec succès:', bookingData);
+      
       setIsProcessing(false);
       setShowConfirmationModal(false);
       
-      // Créer la réservation
+      // Préparer les données pour l'écran de confirmation
       const booking = {
-        id: Date.now().toString(),
-        service,
-        provider,
+        id: bookingData.id,
+        service: currentService,
+        provider: currentProvider,
         date: selectedDate,
         time: selectedTime,
         paymentMethod: selectedPaymentMethod,
         notes,
-        status: 'confirmed',
-        total: service.price,
+        status: bookingData.status,
+        total: totalPrice,
       };
-
-      console.log('Réservation créée:', booking);
       
       // Feedback de succès
       showSuccess('Réservation confirmée ! Vous recevrez une confirmation par email.');
@@ -153,7 +238,22 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
           navigation.navigate('BookingConfirmation', { booking });
         }
       }, 2000);
-    }, 2000);
+    } catch (error: any) {
+      console.error('Erreur création réservation:', error);
+      setIsProcessing(false);
+      setShowConfirmationModal(false);
+      
+      // Gérer les erreurs spécifiques
+      if (error.message?.includes('row-level security')) {
+        showError('Erreur de permissions. Veuillez vérifier votre connexion.');
+      } else if (error.message?.includes('duplicate')) {
+        showError('Une réservation existe déjà pour ce créneau.');
+      } else if (error.message?.includes('invalid input syntax for type uuid')) {
+        showError('Les données du service ou du prestataire ne sont pas valides. Veuillez réessayer depuis la recherche.');
+      } else {
+        showError(error.message || 'Erreur lors de la création de la réservation. Veuillez réessayer.');
+      }
+    }
   };
 
   const handleBack = () => {
@@ -181,7 +281,11 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ navigation, route }) => {
         <View style={styles.placeholder} />
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Service et Prestataire */}
         <View style={styles.serviceCard}>
           <View style={styles.serviceHeader}>
@@ -461,6 +565,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   serviceCard: {
     backgroundColor: COLORS.white,

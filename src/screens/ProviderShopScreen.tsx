@@ -1,115 +1,183 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
+import { AuthService } from '../../backend/services/auth.service';
+import { ServicesService } from '../../backend/services/services.service';
+import { supabase } from '../../backend/supabase/config';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface ProviderShopScreenProps {
   navigation?: any;
 }
 
 const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>('all');
+  const [provider, setProvider] = useState<any>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
 
-  const provider = {
-    name: 'Sophie Martin',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie&backgroundColor=b6e3f4',
-    rating: 4.8,
-    totalReviews: 156,
-    description: 'Coiffeuse professionnelle avec 8 ans d\'expérience. Spécialisée dans les coupes modernes et les colorations.',
-    address: '123 Rue de la Paix, Paris',
-    phone: '+33 6 12 34 56 78',
-    email: 'sophie.martin@email.com',
-    isOnline: true
+  // Charger les données
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Récupérer l'utilisateur actuel
+      const userData = await AuthService.getCurrentUser();
+      if (!userData || !userData.is_provider) {
+        Alert.alert('Erreur', 'Vous n\'êtes pas un prestataire');
+        navigation?.goBack();
+        return;
+      }
+
+      // Charger les données du prestataire
+      setProvider({
+        name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email,
+        avatar: userData.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}&backgroundColor=b6e3f4`,
+        description: userData.description || 'Aucune description',
+        address: userData.address || 'Adresse non renseignée',
+        phone: userData.phone || 'Téléphone non renseigné',
+        email: userData.email,
+        isOnline: true // TODO: Implémenter le statut en ligne
+      });
+
+      // Charger les services du prestataire
+      const servicesData = await ServicesService.getServices({
+        providerId: userData.id,
+        isActive: true,
+      });
+
+      const transformedServices = (servicesData || []).map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        description: service.description || '',
+        price: parseFloat(service.price) || 0,
+        duration: service.duration_minutes || 0,
+        category: service.category?.name?.toLowerCase() || 'autre',
+        categoryId: service.category_id,
+        image: service.image_url || 'https://via.placeholder.com/300x200',
+      }));
+
+      setServices(transformedServices);
+
+      // Charger les catégories
+      const categoriesData = await ServicesService.getCategories();
+      const allCategories = [
+        { id: 'all', name: 'Tous', icon: 'grid-outline' },
+        ...(categoriesData || []).map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          icon: getCategoryIcon(cat.name),
+        })),
+      ];
+      setCategories(allCategories);
+
+      // Charger les avis
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          user:users!reviews_user_id_fkey(id, first_name, last_name, avatar_url)
+        `)
+        .eq('provider_id', userData.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (reviewsError) {
+        console.error('Erreur lors du chargement des avis:', reviewsError);
+      } else {
+        const transformedReviews = (reviewsData || []).map((review: any) => {
+          const userName = review.user 
+            ? `${review.user.first_name || ''} ${review.user.last_name || ''}`.trim() || 'Client'
+            : 'Client';
+          const userAvatar = review.user?.avatar_url || 
+            `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}&backgroundColor=b6e3f4`;
+          
+          const date = new Date(review.created_at);
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - date.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          let dateText = '';
+          if (diffDays === 0) dateText = "Aujourd'hui";
+          else if (diffDays === 1) dateText = 'Il y a 1 jour';
+          else if (diffDays < 7) dateText = `Il y a ${diffDays} jours`;
+          else if (diffDays < 30) dateText = `Il y a ${Math.floor(diffDays / 7)} semaine${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+          else dateText = `Il y a ${Math.floor(diffDays / 30)} mois`;
+
+          return {
+            id: review.id,
+            clientName: userName,
+            clientAvatar: userAvatar,
+            rating: review.rating,
+            comment: review.comment || '',
+            date: dateText,
+          };
+        });
+
+        setReviews(transformedReviews);
+
+        // Calculer la moyenne et le total
+        if (reviewsData && reviewsData.length > 0) {
+          const total = reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0);
+          setAverageRating(total / reviewsData.length);
+          setTotalReviews(reviewsData.length);
+        } else {
+          setAverageRating(0);
+          setTotalReviews(0);
+        }
+      }
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des données:', error);
+      Alert.alert('Erreur', error.message || 'Erreur lors du chargement des données');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigation]);
+
+  // Obtenir l'icône pour une catégorie
+  const getCategoryIcon = (categoryName: string): string => {
+    const name = categoryName.toLowerCase();
+    if (name.includes('coiffure')) return 'cut-outline';
+    if (name.includes('manucure')) return 'hand-left-outline';
+    if (name.includes('pédicure') || name.includes('pedicure')) return 'foot-outline';
+    if (name.includes('massage')) return 'body-outline';
+    if (name.includes('soin') || name.includes('beauté')) return 'sparkles-outline';
+    return 'grid-outline';
   };
 
-  const services = [
-    {
-      id: '1',
-      name: 'Coupe + Brushing',
-      description: 'Coupe personnalisée avec brushing professionnel',
-      price: 45,
-      duration: 90,
-      category: 'coiffure',
-      image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=300&h=200&fit=crop'
-    },
-    {
-      id: '2',
-      name: 'Coloration',
-      description: 'Coloration complète avec produits professionnels',
-      price: 65,
-      duration: 120,
-      category: 'coiffure',
-      image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=300&h=200&fit=crop'
-    },
-    {
-      id: '3',
-      name: 'Manucure',
-      description: 'Manucure complète avec vernis semi-permanent',
-      price: 35,
-      duration: 60,
-      category: 'manucure',
-      image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300&h=200&fit=crop'
-    },
-    {
-      id: '4',
-      name: 'Pédicure',
-      description: 'Pédicure relaxante avec soin des pieds',
-      price: 40,
-      duration: 75,
-      category: 'pedicure',
-      image: 'https://images.unsplash.com/photo-1519415387722-a1c3bbef716e?w=300&h=200&fit=crop'
-    }
-  ];
+  // Recharger les données quand l'écran est focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
-  const categories = [
-    { id: 'all', name: 'Tous', icon: 'grid-outline' },
-    { id: 'coiffure', name: 'Coiffure', icon: 'cut-outline' },
-    { id: 'manucure', name: 'Manucure', icon: 'hand-left-outline' },
-    { id: 'pedicure', name: 'Pédicure', icon: 'foot-outline' }
-  ];
-
-  const reviews = [
-    {
-      id: '1',
-      clientName: 'Marie Dupont',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie&backgroundColor=b6e3f4',
-      rating: 5,
-      comment: 'Excellente coiffeuse ! Très professionnelle et à l\'écoute.',
-      date: 'Il y a 2 jours'
-    },
-    {
-      id: '2',
-      clientName: 'Julie Martin',
-      clientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julie&backgroundColor=b6e3f4',
-      rating: 4,
-      comment: 'Très satisfaite de ma coupe, je recommande !',
-      date: 'Il y a 1 semaine'
-    }
-  ];
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredServices = services.filter(service => {
     const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          service.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || selectedCategory === 'all' || service.category === selectedCategory;
+    const matchesCategory = !selectedCategory || selectedCategory === 'all' || 
+                           service.categoryId === selectedCategory || 
+                           service.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handleServicePress = (service: any) => {
-    Alert.alert(
-      'Service',
-      `${service.name}\nPrix: ${service.price}€\nDurée: ${service.duration}min`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Modifier', onPress: () => Alert.alert('Modifier', 'Modifier ce service') },
-        { text: 'Supprimer', style: 'destructive', onPress: () => Alert.alert('Supprimer', 'Supprimer ce service') }
-      ]
-    );
+    navigation?.navigate('ProviderServicesManagement');
   };
 
   const handleAddService = () => {
-    Alert.alert('Ajouter un service', 'Fonctionnalité à venir');
+    navigation?.navigate('ProviderServicesManagement');
   };
 
   const handleBack = () => {
@@ -119,11 +187,11 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Modifier le profil', 'Fonctionnalité à venir');
+    navigation?.navigate('ProviderProfileManagement');
   };
 
   const handleViewAllReviews = () => {
-    Alert.alert('Tous les avis', 'Voir tous les avis clients');
+    navigation?.navigate('ProviderReviews');
   };
 
   const renderStars = (rating: number) => {
@@ -137,8 +205,28 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
     ));
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement de votre boutique..." />
+      </View>
+    );
+  }
+
+  if (!provider) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Erreur lors du chargement des données</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -158,8 +246,10 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
           <View style={styles.providerDetails}>
             <Text style={styles.providerName}>{provider.name}</Text>
             <View style={styles.ratingContainer}>
-              {renderStars(provider.rating)}
-              <Text style={styles.ratingText}>{provider.rating} ({provider.totalReviews} avis)</Text>
+              {renderStars(averageRating)}
+              <Text style={styles.ratingText}>
+                {averageRating > 0 ? averageRating.toFixed(1) : '0.0'} ({totalReviews} avis)
+              </Text>
             </View>
             <View style={styles.onlineStatus}>
               <View style={[styles.statusDot, { backgroundColor: provider.isOnline ? COLORS.success : COLORS.error }]} />
@@ -264,7 +354,14 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
           </TouchableOpacity>
         </View>
 
-        {reviews.map((review) => (
+        {reviews.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={64} color={COLORS.textSecondary} />
+            <Text style={styles.emptyStateTitle}>Aucun avis</Text>
+            <Text style={styles.emptyStateText}>Vous n'avez pas encore reçu d'avis</Text>
+          </View>
+        ) : (
+          reviews.map((review) => (
           <View key={review.id} style={styles.reviewCard}>
             <View style={styles.reviewHeader}>
               <Image source={{ uri: review.clientAvatar }} style={styles.reviewerAvatar} />
@@ -278,7 +375,8 @@ const ProviderShopScreen: React.FC<ProviderShopScreenProps> = ({ navigation }) =
             </View>
             <Text style={styles.reviewComment}>{review.comment}</Text>
           </View>
-        ))}
+          ))
+        )}
       </View>
 
       {/* Informations de contact */}
@@ -307,6 +405,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     paddingTop: 50,
@@ -344,7 +446,13 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 16,
     padding: 20,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   providerHeader: {
     flexDirection: 'row',
@@ -406,7 +514,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   searchInput: {
     flex: 1,
@@ -425,7 +539,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     marginHorizontal: 8,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   categoryButtonActive: {
     backgroundColor: COLORS.primary,
@@ -496,7 +616,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     overflow: 'hidden',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   serviceImage: {
     width: '100%',
@@ -552,7 +678,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     padding: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -591,7 +723,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 12,
     padding: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   contactItem: {
     flexDirection: 'row',
@@ -603,6 +741,17 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginLeft: 12,
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.error,
+    textAlign: 'center',
   },
 });
 

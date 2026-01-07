@@ -75,22 +75,6 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
           <Ionicons name="time" size={14} color={COLORS.textSecondary} />
           <Text style={styles.availability}>Disponible aujourd'hui</Text>
         </View>
-
-        {/* Bouton Urgence si disponible */}
-        {acceptsEmergency && (
-          <TouchableOpacity
-            style={styles.emergencyButton}
-            onPress={(e) => {
-              e?.stopPropagation?.();
-              if (onEmergencyPress) {
-                onEmergencyPress();
-              }
-            }}
-          >
-            <Ionicons name="flash" size={16} color={COLORS.white} />
-            <Text style={styles.emergencyButtonText}>Réserver en urgence</Text>
-          </TouchableOpacity>
-        )}
       </View>
       
       <View style={styles.actions}>
@@ -117,10 +101,10 @@ const ProviderCard: React.FC<ProviderCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 0,
+    marginVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
     boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
@@ -138,19 +122,20 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
   },
   info: {
     flex: 1,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
+    flexShrink: 1,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -203,22 +188,6 @@ const styles = StyleSheet.create({
   },
   arrow: {
     marginLeft: 4,
-  },
-  emergencyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.error,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    gap: 6,
-  },
-  emergencyButtonText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,11 @@ import { COLORS } from '../constants/colors';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import EmergencyBadge from '../components/EmergencyBadge';
+import { AuthService } from '../../backend/services/auth.service';
+import { BookingsService } from '../../backend/services/bookings.service';
+import { ServicesService } from '../../backend/services/services.service';
+import { supabase } from '../../backend/supabase/config';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface EmergencyBookingScreenProps {
   route?: {
@@ -31,14 +36,95 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
   const { provider, service } = route?.params || {};
   const [selectedService, setSelectedService] = useState<Service | null>(service || null);
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [urgencyReason, setUrgencyReason] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [providerData, setProviderData] = useState<any>(null);
   const { toast, showSuccess, showError, hideToast } = useToast();
 
+  // Charger les données
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const user = await AuthService.getCurrentUser();
+        if (!user || !user.id) {
+          Alert.alert('Erreur', 'Vous devez être connecté');
+          navigation?.goBack();
+          return;
+        }
+        setCurrentUserId(user.id);
+
+        // Charger les données du prestataire depuis Supabase
+        if (provider?.id) {
+          const servicesData = await ServicesService.getServices({
+            providerId: provider.id,
+            isActive: true,
+          });
+          
+          // Vérifier que le prestataire est premium et accepte les urgences
+          const { data: providerInfo } = await supabase
+            .from('users')
+            .select('is_premium, accepts_emergency')
+            .eq('id', provider.id)
+            .single();
+
+          if (!providerInfo?.is_premium || !providerInfo?.accepts_emergency) {
+            Alert.alert(
+              'Réservation urgente non disponible',
+              'Ce prestataire n\'accepte pas les réservations urgentes pour le moment.',
+              [{ text: 'OK', onPress: () => navigation?.goBack() }]
+            );
+            return;
+          }
+
+          setProviderData({
+            ...provider,
+            is_premium: providerInfo.is_premium,
+            accepts_emergency: providerInfo.accepts_emergency,
+            services: servicesData || [],
+          });
+
+          // Si un service était sélectionné, le retrouver
+          if (service && servicesData) {
+            const foundService = servicesData.find((s: any) => s.id === service.id);
+            if (foundService) {
+              setSelectedService({
+                id: foundService.id,
+                name: foundService.name,
+                price: parseFloat(foundService.price) || 0,
+                duration: foundService.duration_minutes || 60,
+                category: foundService.category?.name || '',
+                description: foundService.description || '',
+              });
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Erreur chargement données:', error);
+        showError('Erreur lors du chargement des données');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [provider, service, navigation, showError]);
+
   // Vérifier si le prestataire accepte les urgences
-  if (!provider || !provider.acceptsEmergency) {
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement..." />
+      </View>
+    );
+  }
+
+  if (!providerData || !providerData.accepts_emergency || !providerData.is_premium) {
     return (
       <View style={styles.container}>
         <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
@@ -66,33 +152,48 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
   }
 
   // Services disponibles du prestataire
-  const availableServices = provider.services && Array.isArray(provider.services)
-    ? provider.services.filter(s => typeof s === 'object' && 'id' in s)
-    : [];
+  const availableServices = providerData?.services || [];
 
-  // Heures disponibles pour aujourd'hui et demain
+  // Heures disponibles pour les 24h prochaines (réservation urgente)
   const getAvailableTimes = () => {
     const times = [];
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
     
-    // Heures d'aujourd'hui (à partir de maintenant + 2h)
-    for (let hour = currentHour + 2; hour < 22; hour++) {
+    // Calculer l'heure limite (24h après maintenant)
+    const maxDateTime = new Date(now);
+    maxDateTime.setHours(maxDateTime.getHours() + 24);
+    const maxHour = maxDateTime.getHours();
+    const maxDate = maxDateTime.toISOString().split('T')[0];
+    
+    // Heures d'aujourd'hui (minimum 2h après maintenant, jusqu'à 22h ou limite 24h)
+    const minHour = currentHour + 2;
+    const todayMaxHour = maxDate === today ? Math.min(22, maxHour) : 22;
+    
+    for (let hour = minHour; hour <= todayMaxHour; hour++) {
       times.push({
-        date: 'Aujourd\'hui',
+        date: today,
+        dateLabel: 'Aujourd\'hui',
         time: `${hour.toString().padStart(2, '0')}:00`,
         available: true,
       });
     }
     
-    // Heures de demain
-    for (let hour = 8; hour < 22; hour++) {
-      times.push({
-        date: 'Demain',
-        time: `${hour.toString().padStart(2, '0')}:00`,
-        available: true,
-      });
+    // Heures de demain si dans les 24h
+    if (maxDate === tomorrowStr && maxHour > 0) {
+      for (let hour = 8; hour <= Math.min(22, maxHour); hour++) {
+        times.push({
+          date: tomorrowStr,
+          dateLabel: 'Demain',
+          time: `${hour.toString().padStart(2, '0')}:00`,
+          available: true,
+        });
+      }
     }
     
     return times;
@@ -122,25 +223,68 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
   };
 
   const handleFinalConfirm = async () => {
+    if (!currentUserId || !selectedService || !providerData || !selectedTime || !selectedDate) {
+      showError('Données manquantes');
+      return;
+    }
+
     setIsProcessing(true);
     
-    // Simuler l'envoi de la demande
-    setTimeout(() => {
+    try {
+      // Calculer le prix avec majoration (25% par défaut, peut être ajusté)
+      const basePrice = selectedService.price;
+      const markup = 0.25; // 25% de majoration
+      const emergencyFee = Math.round(basePrice * markup);
+      const totalPrice = basePrice + emergencyFee;
+
+      // Extraire l'heure du format "YYYY-MM-DD HH:MM"
+      const timeOnly = selectedTime.split(' ')[1] || selectedTime;
+
+      // Créer la réservation urgente
+      const bookingData = await BookingsService.createBooking({
+        userId: currentUserId,
+        providerId: providerData.id,
+        serviceId: selectedService.id,
+        bookingDate: selectedDate,
+        bookingTime: timeOnly,
+        durationMinutes: selectedService.duration || 60,
+        totalPrice: totalPrice,
+        isEmergency: true,
+        emergencyReason: urgencyReason,
+        clientNotes: `Téléphone: ${phoneNumber}. Urgence: ${urgencyReason}`,
+      });
+
       setIsProcessing(false);
       setShowConfirmationModal(false);
-      showSuccess('Demande de réservation urgente envoyée ! Le prestataire vous contactera sous peu.');
+      showSuccess('Réservation urgente créée avec succès !');
       
-      // Naviguer vers les réservations après 2 secondes
+      // Naviguer vers la confirmation
       setTimeout(() => {
-        navigation?.navigate('Bookings');
-      }, 2000);
-    }, 1500);
+        navigation?.navigate('BookingConfirmation', {
+          booking: {
+            id: bookingData.id,
+            service: selectedService,
+            provider: providerData,
+            date: selectedDate,
+            time: timeOnly,
+            total: totalPrice,
+            isEmergency: true,
+            status: bookingData.status,
+          },
+        });
+      }, 1500);
+    } catch (error: any) {
+      console.error('Erreur création réservation urgente:', error);
+      setIsProcessing(false);
+      showError(error.message || 'Erreur lors de la création de la réservation urgente');
+    }
   };
 
   const calculateEmergencyFee = () => {
     if (!selectedService) return 0;
-    // Frais d'urgence : +30% du prix du service
-    return Math.round(selectedService.price * 0.3);
+    // Majoration d'urgence : 25% du prix du service
+    const markup = 0.25;
+    return Math.round(selectedService.price * markup);
   };
 
   const totalPrice = selectedService
@@ -168,12 +312,16 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
         <View style={styles.placeholder} />
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Info Banner */}
         <View style={styles.infoBanner}>
           <Ionicons name="information-circle" size={20} color={COLORS.warning} />
           <Text style={styles.infoText}>
-            Réservation urgente : réponse sous 24h avec majoration de 30%
+            Réservation urgente : réservation pour aujourd'hui avec majoration de 25%
           </Text>
         </View>
 
@@ -181,10 +329,10 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
         <View style={styles.providerSection}>
           <View style={styles.providerCard}>
             <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{provider.name}</Text>
+              <Text style={styles.providerName}>{providerData?.name || provider?.name}</Text>
               <View style={styles.providerRating}>
                 <Ionicons name="star" size={16} color={COLORS.warning} />
-                <Text style={styles.ratingText}>{provider.rating}</Text>
+                <Text style={styles.ratingText}>{providerData?.rating || provider?.rating || '0'}</Text>
               </View>
             </View>
             <EmergencyBadge size="small" />
@@ -195,8 +343,15 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Service souhaité *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.servicesScroll}>
-            {availableServices.map((s) => {
-              const serviceObj = s as Service;
+            {availableServices.map((s: any) => {
+              const serviceObj: Service = {
+                id: s.id,
+                name: s.name,
+                price: parseFloat(s.price) || 0,
+                duration: s.duration_minutes || 60,
+                category: s.category?.name || '',
+                description: s.description || '',
+              };
               const isSelected = selectedService?.id === serviceObj.id;
               return (
                 <TouchableOpacity
@@ -216,28 +371,35 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
 
         {/* Time Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Horaire souhaité *</Text>
+          <Text style={styles.sectionTitle}>Horaire souhaité (Aujourd'hui uniquement) *</Text>
           <View style={styles.timeGrid}>
-            {availableTimes.map((slot, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.timeSlot,
-                  selectedTime === `${slot.date} ${slot.time}` && styles.timeSlotSelected,
-                ]}
-                onPress={() => setSelectedTime(`${slot.date} ${slot.time}`)}
-              >
-                <Text style={styles.timeDate}>{slot.date}</Text>
-                <Text
+            {availableTimes.map((slot, index) => {
+              const timeKey = `${slot.date} ${slot.time}`;
+              const isSelected = selectedTime === timeKey;
+              return (
+                <TouchableOpacity
+                  key={index}
                   style={[
-                    styles.timeText,
-                    selectedTime === `${slot.date} ${slot.time}` && styles.timeTextSelected,
+                    styles.timeSlot,
+                    isSelected && styles.timeSlotSelected,
                   ]}
+                  onPress={() => {
+                    setSelectedTime(timeKey);
+                    setSelectedDate(slot.date);
+                  }}
                 >
-                  {slot.time}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text style={styles.timeDate}>{slot.dateLabel}</Text>
+                  <Text
+                    style={[
+                      styles.timeText,
+                      isSelected && styles.timeTextSelected,
+                    ]}
+                  >
+                    {slot.time}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -276,7 +438,7 @@ const EmergencyBookingScreen: React.FC<EmergencyBookingScreenProps> = ({ navigat
               <Text style={styles.priceValue}>{selectedService.price}€</Text>
             </View>
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Majoration urgence (30%)</Text>
+              <Text style={styles.priceLabel}>Majoration urgence (25%)</Text>
               <Text style={styles.priceValue}>{calculateEmergencyFee()}€</Text>
             </View>
             <View style={[styles.priceRow, styles.priceTotal]}>
@@ -384,6 +546,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   infoBanner: {
     flexDirection: 'row',
@@ -651,6 +817,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   errorContainer: {
     flex: 1,

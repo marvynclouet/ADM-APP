@@ -46,6 +46,12 @@ export class ServicesService {
       if (filters?.isCustom !== undefined) {
         query = query.eq('is_custom', filters.isCustom);
       }
+      
+      // Pour la recherche publique, ne montrer que les services approuvés
+      // (sauf si on filtre spécifiquement par provider, auquel cas on montre tous les services du provider)
+      if (!filters?.providerId) {
+        query = query.eq('moderation_status', 'approved');
+      }
 
       if (filters?.limit) {
         query = query.limit(filters.limit);
@@ -57,6 +63,26 @@ export class ServicesService {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      // Log pour déboguer
+      console.log('🔍 ServicesService.getServices - Filtres appliqués:', filters);
+      console.log('🔍 ServicesService.getServices - Services récupérés:', data?.length || 0);
+      if (data && data.length > 0) {
+        console.log('🔍 Premier service:', {
+          id: data[0].id,
+          name: data[0].name,
+          provider_id: data[0].provider_id,
+          category_id: data[0].category_id,
+          subcategory_id: data[0].subcategory_id,
+          is_active: data[0].is_active,
+          moderation_status: data[0].moderation_status,
+          is_custom: data[0].is_custom,
+          hasProvider: !!data[0].provider,
+        });
+      } else {
+        console.log('🔍 Aucun service récupéré. Vérifiez les filtres et les conditions.');
+      }
+      
       return data;
     } catch (error: any) {
       console.error('Erreur getServices:', error);
@@ -93,6 +119,14 @@ export class ServicesService {
    */
   static async createService(providerId: string, serviceData: any) {
     try {
+      console.log('🔍 ServicesService.createService - Données reçues:', {
+        providerId,
+        serviceData: {
+          ...serviceData,
+          provider_id: providerId,
+        },
+      });
+
       const { data, error } = await supabase
         .from('services')
         .insert({
@@ -103,6 +137,18 @@ export class ServicesService {
         .single();
 
       if (error) throw error;
+      
+      console.log('🔍 ServicesService.createService - Service créé:', {
+        id: data.id,
+        name: data.name,
+        provider_id: data.provider_id,
+        category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
+        is_active: data.is_active,
+        moderation_status: data.moderation_status,
+        is_custom: data.is_custom,
+      });
+      
       return data;
     } catch (error: any) {
       console.error('Erreur createService:', error);
@@ -169,4 +215,9 @@ export class ServicesService {
     }
   }
 }
+
+
+
+
+
 

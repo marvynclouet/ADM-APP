@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,21 @@ import {
   Modal,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants/colors';
 import EmptyState from '../components/EmptyState';
 import { ServiceLevel } from '../types';
 import LevelBadge from '../components/LevelBadge';
+import { AuthService } from '../../backend/services/auth.service';
+import { ServicesService } from '../../backend/services/services.service';
+import LoadingSpinner from '../components/LoadingSpinner';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface Service {
   id: string;
@@ -26,6 +33,8 @@ interface Service {
   price: number;
   duration: number;
   category: string;
+  categoryId?: string;
+  subcategoryId?: string; // Sous-catégorie obligatoire
   image?: string;
   isActive: boolean;
   level?: ServiceLevel;
@@ -36,31 +45,37 @@ interface ProviderServicesManagementScreenProps {
   navigation?: any;
 }
 
+// Mapper les niveaux de la BDD vers ServiceLevel
+const mapLevelToServiceLevel = (level: string): ServiceLevel => {
+  switch (level) {
+    case 'beginner': return ServiceLevel.BEGINNER;
+    case 'intermediate': return ServiceLevel.INTERMEDIATE;
+    case 'advanced': return ServiceLevel.ADVANCED;
+    case 'pro': return ServiceLevel.PRO;
+    default: return ServiceLevel.INTERMEDIATE;
+  }
+};
+
+// Mapper ServiceLevel vers les niveaux de la BDD
+const mapServiceLevelToDB = (level: ServiceLevel): string => {
+  switch (level) {
+    case ServiceLevel.BEGINNER: return 'beginner';
+    case ServiceLevel.INTERMEDIATE: return 'intermediate';
+    case ServiceLevel.ADVANCED: return 'advanced';
+    case ServiceLevel.PRO: return 'pro';
+    default: return 'intermediate';
+  }
+};
+
 const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScreenProps> = ({
   navigation,
 }) => {
-  const [services, setServices] = useState<Service[]>([
-    {
-      id: '1',
-      name: 'Coiffure & Brushing',
-      description: 'Coupe moderne et brushing professionnel',
-      price: 45,
-      duration: 60,
-      category: 'Coiffure',
-      image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'Manucure',
-      description: 'Soin des ongles et pose de vernis',
-      price: 25,
-      duration: 45,
-      category: 'Beauté',
-      image: 'https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=400',
-      isActive: true,
-    },
-  ]);
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -69,14 +84,74 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
     description: '',
     price: '',
     duration: '',
-    category: 'Coiffure',
+    category: '',
+    categoryId: '',
+    subcategoryId: '', // Sous-catégorie obligatoire
     image: '',
     isActive: true,
     level: ServiceLevel.INTERMEDIATE,
     isCustom: false, // Prestation personnalisée
   });
 
-  const categories = ['Coiffure', 'Beauté', 'Massage', 'Soins', 'Autre'];
+  // Charger les données
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Récupérer l'utilisateur actuel
+      const userData = await AuthService.getCurrentUser();
+      if (!userData || !userData.is_provider) {
+        Alert.alert('Erreur', 'Vous n\'êtes pas un prestataire');
+        navigation?.goBack();
+        return;
+      }
+
+      setCurrentUserId(userData.id);
+
+      // Charger les services du prestataire
+      const servicesData = await ServicesService.getServices({
+        providerId: userData.id,
+      });
+
+      // Transformer les données pour l'affichage
+      const transformedServices = (servicesData || []).map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        description: service.description || '',
+        price: parseFloat(service.price) || 0,
+        duration: service.duration_minutes || 0,
+        category: service.category?.name || 'Autre',
+        categoryId: service.category_id,
+        subcategoryId: service.subcategory_id || '',
+        image: service.image_url || undefined,
+        isActive: service.is_active || false,
+        level: service.level ? mapLevelToServiceLevel(service.level) : ServiceLevel.INTERMEDIATE,
+        isCustom: service.is_custom || false,
+      }));
+
+      setServices(transformedServices);
+
+      // Charger les catégories
+      const categoriesData = await ServicesService.getCategories();
+      setCategories(categoriesData || []);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des données:', error);
+      showError(error.message || 'Erreur lors du chargement des données');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigation, showError]);
+
+  // Recharger les données quand l'écran est focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
   const levels = [
     { value: ServiceLevel.BEGINNER, label: 'Débutant' },
     { value: ServiceLevel.INTERMEDIATE, label: 'Intermédiaire' },
@@ -85,29 +160,38 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
   ];
 
   const handleAddService = () => {
+    console.log('🔍 handleAddService appelé, categories:', categories.length);
     setEditingService(null);
+    const firstCategory = categories.length > 0 ? categories[0] : null;
+    console.log('🔍 firstCategory:', firstCategory);
     setFormData({
       name: '',
       description: '',
       price: '',
       duration: '',
-      category: 'Coiffure',
+      category: firstCategory?.name || '',
+      categoryId: firstCategory?.id || '',
+      subcategoryId: '', // Réinitialiser la sous-catégorie
       image: '',
       isActive: true,
       level: ServiceLevel.INTERMEDIATE,
       isCustom: false,
     });
+    console.log('🔍 Ouverture du modal, isModalVisible sera:', true);
     setIsModalVisible(true);
   };
 
   const handleAddCustomService = () => {
     setEditingService(null);
+    const otherCategory = categories.find(c => c.name.toLowerCase().includes('autre')) || categories[0];
     setFormData({
       name: '',
       description: '',
       price: '',
       duration: '',
-      category: 'Autre',
+      category: otherCategory?.name || '',
+      categoryId: otherCategory?.id || '',
+      subcategoryId: '', // Réinitialiser la sous-catégorie
       image: '',
       isActive: true,
       level: ServiceLevel.INTERMEDIATE,
@@ -124,6 +208,8 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       price: service.price.toString(),
       duration: service.duration.toString(),
       category: service.category,
+      categoryId: service.categoryId || '',
+      subcategoryId: service.subcategoryId || '',
       image: service.image || '',
       isActive: service.isActive,
       level: service.level || ServiceLevel.INTERMEDIATE,
@@ -132,7 +218,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
     setIsModalVisible(true);
   };
 
-  const handleDeleteService = (serviceId: string) => {
+  const handleDeleteService = async (serviceId: string) => {
     Alert.alert(
       'Supprimer le service',
       'Êtes-vous sûr de vouloir supprimer ce service ?',
@@ -141,8 +227,15 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            setServices(services.filter(s => s.id !== serviceId));
+          onPress: async () => {
+            try {
+              await ServicesService.deleteService(serviceId);
+              showSuccess('Service supprimé avec succès');
+              await loadData();
+            } catch (error: any) {
+              console.error('Erreur lors de la suppression:', error);
+              showError(error.message || 'Erreur lors de la suppression du service');
+            }
           },
         },
       ]
@@ -151,7 +244,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images) || 'images',
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -162,45 +255,94 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
     }
   };
 
-  const handleSaveService = () => {
-    if (!formData.name || !formData.price || !formData.duration) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+  const handleSaveService = async () => {
+    if (!formData.name || !formData.price || !formData.duration || !formData.categoryId || !formData.subcategoryId) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (nom, prix, durée, catégorie et sous-catégorie)');
       return;
     }
 
-    const newService: Service = {
-      id: editingService?.id || Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      price: parseFloat(formData.price),
-      duration: parseInt(formData.duration),
-      category: formData.category,
-      image: formData.image,
-      isActive: formData.isActive,
-      level: formData.level,
-      isCustom: formData.isCustom,
-    };
-
-    if (editingService) {
-      setServices(services.map(s => (s.id === editingService.id ? newService : s)));
-    } else {
-      setServices([...services, newService]);
+    if (!currentUserId) {
+      showError('Aucun utilisateur connecté');
+      return;
     }
 
-    setIsModalVisible(false);
-    Alert.alert('Succès', editingService ? 'Service modifié' : 'Service ajouté');
+    try {
+      setIsSaving(true);
+
+      const serviceData: any = {
+        category_id: formData.categoryId,
+        subcategory_id: formData.subcategoryId, // Sous-catégorie obligatoire
+        name: formData.name,
+        description: formData.description || null,
+        price: parseFloat(formData.price),
+        duration_minutes: parseInt(formData.duration),
+        image_url: formData.image || null,
+        level: mapServiceLevelToDB(formData.level),
+        is_custom: formData.isCustom,
+        is_active: formData.isActive,
+        moderation_status: formData.isCustom ? 'pending' : 'approved',
+      };
+
+      console.log('🔍 ProviderServicesManagement - Données du service à créer:', {
+        ...serviceData,
+        formData,
+      });
+
+      if (editingService) {
+        // Mettre à jour le service existant
+        await ServicesService.updateService(editingService.id, serviceData);
+        showSuccess('Service modifié avec succès');
+      } else {
+        // Créer un nouveau service
+        await ServicesService.createService(currentUserId, serviceData);
+        showSuccess('Service ajouté avec succès');
+      }
+
+      setIsModalVisible(false);
+      await loadData();
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      showError(error.message || 'Erreur lors de la sauvegarde du service');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const toggleServiceStatus = (serviceId: string) => {
-    setServices(
-      services.map(s =>
-        s.id === serviceId ? { ...s, isActive: !s.isActive } : s
-      )
-    );
+  const toggleServiceStatus = async (serviceId: string) => {
+    try {
+      const service = services.find(s => s.id === serviceId);
+      if (!service) return;
+
+      const newStatus = !service.isActive;
+      await ServicesService.updateService(serviceId, { is_active: newStatus });
+      
+      // Mettre à jour l'état local
+      setServices(
+        services.map(s =>
+          s.id === serviceId ? { ...s, isActive: newStatus } : s
+        )
+      );
+      
+      showSuccess(newStatus ? 'Service activé' : 'Service désactivé');
+    } catch (error: any) {
+      console.error('Erreur lors du changement de statut:', error);
+      showError(error.message || 'Erreur lors du changement de statut');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingSpinner size="large" text="Chargement des services..." />
+      </View>
+    );
+  }
+
+  console.log('🔍 Render - isModalVisible:', isModalVisible, 'categories:', categories.length);
 
   return (
-    <View style={styles.container}>
+    <>
+      <View style={styles.container}>
       {/* Header */}
       <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
         <View style={styles.headerContent}>
@@ -221,7 +363,11 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
       </LinearGradient>
 
       {/* Services List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {services.length === 0 ? (
           <EmptyState
             icon="business-outline"
@@ -301,6 +447,7 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsModalVisible(false)}
+        statusBarTranslucent={true}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -337,27 +484,74 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
 
               {/* Catégorie */}
               <Text style={styles.inputLabel}>Catégorie *</Text>
-              <View style={styles.categorySelector}>
-                {categories.map(category => (
-                  <TouchableOpacity
-                    key={category}
-                    style={[
-                      styles.categoryButton,
-                      formData.category === category && styles.categoryButtonActive,
-                    ]}
-                    onPress={() => setFormData({ ...formData, category })}
-                  >
-                    <Text
+              {categories.length === 0 ? (
+                <Text style={styles.inputHint}>Chargement des catégories...</Text>
+              ) : (
+                <View style={styles.categorySelector}>
+                  {categories.map(category => (
+                    <TouchableOpacity
+                      key={category.id}
                       style={[
-                        styles.categoryButtonText,
-                        formData.category === category && styles.categoryButtonTextActive,
+                        styles.categoryButton,
+                        formData.categoryId === category.id && styles.categoryButtonActive,
                       ]}
+                      onPress={() => setFormData({ ...formData, category: category.name, categoryId: category.id, subcategoryId: '' })}
                     >
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      <Text
+                        style={[
+                          styles.categoryButtonText,
+                          formData.categoryId === category.id && styles.categoryButtonTextActive,
+                        ]}
+                      >
+                        {category.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Sous-catégorie (obligatoire) */}
+              {formData.categoryId && (
+                <>
+                  <Text style={styles.inputLabel}>Sous-catégorie *</Text>
+                  {(() => {
+                    const selectedCategory = categories.find(c => c.id === formData.categoryId);
+                    const subcategories = selectedCategory?.subcategories || [];
+                    
+                    if (subcategories.length === 0) {
+                      return (
+                        <Text style={styles.inputHint}>
+                          Aucune sous-catégorie disponible pour cette catégorie
+                        </Text>
+                      );
+                    }
+                    
+                    return (
+                      <View style={styles.categorySelector}>
+                        {subcategories.map(subcategory => (
+                          <TouchableOpacity
+                            key={subcategory.id}
+                            style={[
+                              styles.categoryButton,
+                              formData.subcategoryId === subcategory.id && styles.categoryButtonActive,
+                            ]}
+                            onPress={() => setFormData({ ...formData, subcategoryId: subcategory.id })}
+                          >
+                            <Text
+                              style={[
+                                styles.categoryButtonText,
+                                formData.subcategoryId === subcategory.id && styles.categoryButtonTextActive,
+                              ]}
+                            >
+                              {subcategory.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  })()}
+                </>
+              )}
 
               {/* Description */}
               <Text style={styles.inputLabel}>Description</Text>
@@ -430,11 +624,12 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
               {/* Boutons */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={[styles.saveButton, styles.modalButton]}
+                  style={[styles.saveButton, styles.modalButton, isSaving && styles.saveButtonDisabled]}
                   onPress={handleSaveService}
+                  disabled={isSaving}
                 >
                   <Text style={styles.saveButtonText}>
-                    {editingService ? 'Modifier' : 'Ajouter'}
+                    {isSaving ? 'Enregistrement...' : editingService ? 'Modifier' : 'Ajouter'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -448,7 +643,14 @@ const ProviderServicesManagementScreen: React.FC<ProviderServicesManagementScree
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+    </>
   );
 };
 
@@ -501,16 +703,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   serviceCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
+    ...(Platform.OS === 'web' ? { boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   serviceImage: {
     width: '100%',
@@ -626,6 +834,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+    ...(Platform.OS === 'web' ? { 
+      zIndex: 1000,
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    } : {}),
   },
   modalContent: {
     backgroundColor: COLORS.white,
@@ -633,6 +849,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: '90%',
     paddingBottom: 20,
+    ...(Platform.OS === 'web' ? { zIndex: 1001 } : {}),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -758,6 +975,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
 });
 

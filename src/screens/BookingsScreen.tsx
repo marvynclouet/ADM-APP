@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MOCK_BOOKINGS } from '../constants/mockData';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/colors';
 import RatingModal from '../components/RatingModal';
 import { useReviews } from '../hooks/useReviews';
 import { useToast } from '../hooks/useToast';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { ReviewsService } from '../../backend/services/reviews.service';
+import { BookingsService } from '../../backend/services/bookings.service';
+import { AuthService } from '../../backend/services/auth.service';
+import { supabase } from '../../backend/supabase/config';
 
 interface BookingsScreenProps {
   navigation?: any;
@@ -25,15 +29,111 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [bookingsWithReviews, setBookingsWithReviews] = useState<Set<string>>(new Set());
   const { addReview } = useReviews();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
 
-  const upcomingBookings = MOCK_BOOKINGS.filter(booking => 
-    booking.status === 'confirmed' || booking.status === 'pending'
+  // Charger les réservations depuis Supabase
+  useFocusEffect(
+    React.useCallback(() => {
+      loadBookings();
+    }, [])
   );
-  const pastBookings = MOCK_BOOKINGS.filter(booking => 
-    booking.status === 'completed' || booking.status === 'cancelled'
-  );
+
+  const loadBookings = async () => {
+    try {
+      setIsLoading(true);
+      const user = await AuthService.getCurrentUser();
+      if (!user || !user.id) {
+        console.warn('Utilisateur non connecté');
+        setBookings([]);
+        return;
+      }
+
+      setCurrentUserId(user.id);
+      const userBookings = await BookingsService.getUserBookings(user.id);
+      
+      // Transformer les données Supabase en format attendu
+      const transformedBookings = userBookings.map((booking: any) => ({
+        id: booking.id,
+        service: {
+          id: booking.service?.id || booking.service_id,
+          name: booking.service?.name || 'Service',
+          price: booking.service?.price || booking.total_price || 0,
+          duration: booking.service?.duration_minutes || booking.duration_minutes || 60,
+        },
+        provider: {
+          id: booking.provider?.id || booking.provider_id,
+          name: booking.provider 
+            ? `${booking.provider.first_name || ''} ${booking.provider.last_name || ''}`.trim() || booking.provider.email || 'Prestataire'
+            : 'Prestataire',
+          avatar: booking.provider?.avatar_url,
+          phone: booking.provider?.phone,
+          address: booking.provider?.address || booking.provider?.city || '',
+        },
+        date: booking.booking_date,
+        time: booking.booking_time,
+        status: booking.status || 'pending',
+        totalPrice: booking.total_price || 0,
+        notes: booking.client_notes,
+        createdAt: booking.created_at,
+      }));
+
+      setBookings(transformedBookings);
+
+      // Vérifier quelles réservations ont déjà un avis (optimisé : une seule requête)
+      const reviewsSet = new Set<string>();
+      const completedBookings = transformedBookings.filter(b => {
+        const bookingDate = new Date(`${b.date}T${b.time}`);
+        const isPast = bookingDate < new Date();
+        return b.status === 'completed' || (isPast && b.status !== 'cancelled');
+      });
+      
+      if (completedBookings.length > 0) {
+        // Récupérer tous les avis pour ces réservations en une seule requête
+        const bookingIds = completedBookings.map(b => b.id);
+        try {
+          const { data: reviews, error } = await supabase
+            .from('reviews')
+            .select('booking_id')
+            .in('booking_id', bookingIds);
+          
+          if (!error && reviews) {
+            reviews.forEach((review: any) => {
+              reviewsSet.add(review.booking_id);
+            });
+          }
+        } catch (error) {
+          console.error('Erreur lors de la vérification des avis:', error);
+        }
+      }
+      
+      setBookingsWithReviews(reviewsSet);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des réservations:', error);
+      showError('Erreur lors du chargement des réservations');
+      setBookings([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filtrer les réservations selon l'onglet sélectionné
+  const upcomingBookings = bookings.filter(booking => {
+    const bookingDate = new Date(`${booking.date}T${booking.time}`);
+    const now = new Date();
+    return bookingDate >= now && (booking.status === 'confirmed' || booking.status === 'pending');
+  });
+
+  const pastBookings = bookings.filter(booking => {
+    const bookingDate = new Date(`${booking.date}T${booking.time}`);
+    const now = new Date();
+    // Inclure les réservations passées (date < maintenant) ou avec statut completed/cancelled
+    return bookingDate < now || booking.status === 'completed' || booking.status === 'cancelled';
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -66,37 +166,21 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
   };
 
   const handleViewDetails = (booking: any) => {
-    // Créer un objet booking complet pour la page de confirmation
-    const bookingDetails = {
-      id: booking.id,
-      service: {
-        name: 'Coupe + Brushing',
-        price: booking.totalPrice,
-        duration: 60,
-      },
-      provider: {
-        name: 'Marie Dubois',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200',
-        phone: '06 12 34 56 78',
-        address: '15 rue de la Paix, Paris',
-      },
-      date: booking.date,
-      time: booking.time,
-      paymentMethod: 'card',
-      notes: 'Cheveux longs, brushing volumineux',
-      status: booking.status,
-      total: booking.totalPrice,
-      createdAt: booking.createdAt || new Date().toISOString(),
-    };
-
     if (navigation) {
-      navigation.navigate('BookingConfirmation', { booking: bookingDetails });
+      navigation.navigate('BookingConfirmation', { booking });
     }
   };
 
-  const handleCancelBooking = (booking: any) => {
-    // Logique pour annuler une réservation
-    console.log('Annulation de la réservation:', booking.id);
+  const handleCancelBooking = async (booking: any) => {
+    try {
+      // TODO: Implémenter l'annulation via BookingsService.updateBookingStatus
+      console.log('Annulation de la réservation:', booking.id);
+      showSuccess('Réservation annulée');
+      await loadBookings(); // Recharger les réservations
+    } catch (error: any) {
+      console.error('Erreur lors de l\'annulation:', error);
+      showError('Erreur lors de l\'annulation de la réservation');
+    }
   };
 
   const handleReserveService = () => {
@@ -111,25 +195,40 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
   };
 
   const handleSubmitRating = async (rating: number, review: string) => {
-    if (selectedBooking) {
-      await addReview({
-        userId: 'current-user',
-        userName: 'Vous',
+    if (!selectedBooking || !currentUserId) {
+      showError('Impossible de soumettre l\'avis. Données manquantes.');
+      return;
+    }
+
+    try {
+      // Créer l'avis dans Supabase
+      await ReviewsService.createReview({
+        bookingId: selectedBooking.id,
+        userId: currentUserId,
         providerId: selectedBooking.provider.id,
         serviceId: selectedBooking.service.id,
-        serviceName: selectedBooking.service.name,
         rating,
-        review,
-        isVerified: true,
+        comment: review || undefined,
       });
+
+      // Mettre à jour la liste des réservations avec avis
+      setBookingsWithReviews(prev => new Set(prev).add(selectedBooking.id));
+
       showSuccess('Merci pour votre avis !');
+      setRatingModalVisible(false);
+      
+      // Recharger les réservations pour mettre à jour l'affichage
+      await loadBookings();
+    } catch (error: any) {
+      console.error('Erreur lors de la soumission de l\'avis:', error);
+      showError(error.message || 'Erreur lors de la soumission de l\'avis');
     }
   };
 
   const renderBookingCard = (booking: any) => (
     <View key={booking.id} style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
-        <Text style={styles.serviceName}>Coupe + Brushing</Text>
+        <Text style={styles.serviceName}>{booking.service.name}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
           <Text style={styles.statusText}>{getStatusText(booking.status)}</Text>
         </View>
@@ -138,7 +237,7 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
       <View style={styles.bookingDetails}>
         <View style={styles.detailRow}>
           <Ionicons name="person" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.detailText}>Marie Dubois</Text>
+          <Text style={styles.detailText}>{booking.provider.name}</Text>
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="calendar" size={16} color={COLORS.textSecondary} />
@@ -167,15 +266,36 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
             <Text style={styles.cancelButtonText}>Annuler</Text>
           </TouchableOpacity>
         )}
-        {booking.status === 'completed' && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.rateButton]}
-            onPress={() => handleRateService(booking)}
-          >
-            <Ionicons name="star" size={16} color="white" style={{ marginRight: 4 }} />
-            <Text style={styles.rateButtonText}>Noter</Text>
-          </TouchableOpacity>
-        )}
+        {(() => {
+          // Afficher le bouton "Noter" pour les réservations passées (complétées ou date passée) qui n'ont pas encore été notées
+          const bookingDate = new Date(`${booking.date}T${booking.time}`);
+          const isPast = bookingDate < new Date();
+          const canRate = (booking.status === 'completed' || isPast) && booking.status !== 'cancelled';
+          const hasReview = bookingsWithReviews.has(booking.id);
+          
+          if (canRate && !hasReview) {
+            return (
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.rateButton]}
+                onPress={() => handleRateService(booking)}
+              >
+                <Ionicons name="star" size={16} color="white" style={{ marginRight: 4 }} />
+                <Text style={styles.rateButtonText}>Noter</Text>
+              </TouchableOpacity>
+            );
+          }
+          
+          if (canRate && hasReview) {
+            return (
+              <View style={[styles.actionButton, styles.ratedButton]}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.success} style={{ marginRight: 4 }} />
+                <Text style={styles.ratedButtonText}>Noté</Text>
+              </View>
+            );
+          }
+          
+          return null;
+        })()}
       </View>
     </View>
   );
@@ -208,31 +328,39 @@ const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {selectedTab === 'upcoming' ? (
-          upcomingBookings.length > 0 ? (
-            upcomingBookings.map(renderBookingCard)
+      {isLoading ? (
+        <LoadingSpinner text="Chargement de vos réservations..." />
+      ) : (
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {selectedTab === 'upcoming' ? (
+            upcomingBookings.length > 0 ? (
+              upcomingBookings.map(renderBookingCard)
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="Aucune réservation à venir"
+                description="Vous n'avez pas encore de réservations programmées"
+                actionText="Réserver un service"
+                onAction={handleReserveService}
+              />
+            )
           ) : (
-            <EmptyState
-              icon="calendar-outline"
-              title="Aucune réservation à venir"
-              description="Vous n'avez pas encore de réservations programmées"
-              actionText="Réserver un service"
-              onAction={handleReserveService}
-            />
-          )
-        ) : (
-          pastBookings.length > 0 ? (
-            pastBookings.map(renderBookingCard)
-          ) : (
-            <EmptyState
-              icon="time-outline"
-              title="Aucune réservation passée"
-              description="Vos réservations terminées apparaîtront ici"
-            />
-          )
-        )}
-      </ScrollView>
+            pastBookings.length > 0 ? (
+              pastBookings.map(renderBookingCard)
+            ) : (
+              <EmptyState
+                icon="time-outline"
+                title="Aucune réservation passée"
+                description="Vos réservations terminées apparaîtront ici"
+              />
+            )
+          )}
+        </ScrollView>
+      )}
 
       {/* Rating Modal */}
       <RatingModal
@@ -291,6 +419,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   bookingCard: {
     backgroundColor: COLORS.white,
@@ -370,6 +502,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  ratedButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratedButtonText: {
+    color: COLORS.success,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -409,4 +554,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BookingsScreen; 
+export default BookingsScreen;
